@@ -2,7 +2,7 @@
 
 A single-user offline PWA for logging daily morning and afternoon exercise sessions against a personal training regime, installable on iPhone via Safari without an Apple Developer account.
 
-Tech stack: Vanilla HTML/CSS/JS (ES modules), Dexie.js (IndexedDB), Workbox (Service Worker), GitHub Pages.
+Tech stack: Vanilla HTML/CSS/JS (ES modules), Dexie.js (IndexedDB, Phase 2+), hand-rolled cache-first Service Worker (see ADR-002), GitHub Pages.
 
 ## Commands
 
