@@ -16,29 +16,50 @@ This guide covers two paths:
 
 ## A. GitHub Pages (recommended)
 
-### A1. Merge the branch to `main`
+> **Test the branch before you merge.** GitHub Pages can deploy directly from
+> a feature branch — point Pages at `claude/build-phase-1-OtBmb`, validate on
+> the iPhone, then merge to `main` once it passes. Don't merge unverified
+> code into `main` just to deploy it.
 
-The Phase 1 work is on `claude/build-phase-1-OtBmb`. From the repo root:
+### A1. Confirm the branch is pushed
+
+The Phase 1 work lives on `claude/build-phase-1-OtBmb`. It's already on the
+remote — verify with:
 
 ```bash
-git checkout main
-git pull
-git merge claude/build-phase-1-OtBmb
-git push origin main
+git fetch origin
+git ls-remote --heads origin claude/build-phase-1-OtBmb
 ```
 
-(Or open a PR and merge through the GitHub UI.)
-
-### A2. Enable GitHub Pages
+### A2. Point GitHub Pages at the test branch
 
 1. On GitHub, go to **Settings → Pages**.
 2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
-3. Branch: `main`, folder: `/ (root)`. Click **Save**.
+3. Branch: `claude/build-phase-1-OtBmb`, folder: `/ (root)`. Click **Save**.
 4. Wait for the deployment to go green (1–2 minutes). The URL will be:
 
    ```
    https://attackelephant.github.io/ExerciseApp/
    ```
+
+   The URL stays the same when you re-point Pages later — only the source
+   branch changes.
+
+### A2b. Promote to `main` once the branch passes iPhone testing
+
+After steps A3–A7 below succeed on a real device:
+
+```bash
+git checkout main
+git pull
+git merge --no-ff claude/build-phase-1-OtBmb
+git push origin main
+```
+
+Then return to **Settings → Pages** and switch the source branch from
+`claude/build-phase-1-OtBmb` to `main`. From here on, `main` is the deployed
+branch and feature branches are tested by re-pointing Pages at them
+temporarily (or by spinning up Path B for short iterations).
 
 ### A3. Smoke-test in desktop Safari first
 
