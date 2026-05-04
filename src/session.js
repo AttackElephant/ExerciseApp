@@ -35,23 +35,14 @@ function renderSession(label, exercises) {
 }
 
 export function renderToday(root, regime, date = new Date()) {
+  // Both morning and afternoon ALWAYS render. Visibility is never conditional
+  // on the current time of day — only on whether the regime defines exercises.
   const { weekday, morning, afternoon } = sessionsForDate(regime, date);
-  const isRestDay = !morning && !afternoon;
 
   const header = el('header', { class: 'today' }, [
     el('p', { class: 'today__date', text: formatDateLong(date) }),
     el('h1', { class: 'today__weekday', text: formatWeekday(weekday) })
   ]);
-
-  if (isRestDay) {
-    mount(root,
-      header,
-      el('section', { class: 'rest-day' }, [
-        el('p', { text: 'Rest day — no sessions scheduled.' })
-      ])
-    );
-    return;
-  }
 
   mount(root,
     header,
