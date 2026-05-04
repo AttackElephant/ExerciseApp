@@ -52,12 +52,26 @@ export function sessionsToTSV(sessionRows) {
   return { tsv: lines.join('\n'), dataRows };
 }
 
-async function writeToClipboard(text) {
+/**
+ * Write text to the clipboard, called synchronously inside a click handler.
+ * Accepts a Promise<string> so the underlying ClipboardItem can be created
+ * inside the user-gesture window even when the data is fetched async — this
+ * is the only pattern iOS Safari accepts when the source data isn't already
+ * resolved at click time.
+ */
+async function writeTextToClipboard(textPromise) {
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    const blob = textPromise.then((t) => new Blob([t], { type: 'text/plain' }));
+    await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
+    return;
+  }
+  // Older async clipboard: gesture must still be intact when this resolves.
+  const text = await textPromise;
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
     return;
   }
-  // Legacy fallback for older browsers without async clipboard.
+  // Final legacy fallback (deprecated execCommand).
   const ta = document.createElement('textarea');
   ta.value = text;
   ta.setAttribute('readonly', '');
@@ -68,15 +82,6 @@ async function writeToClipboard(text) {
   const ok = document.execCommand('copy');
   document.body.removeChild(ta);
   if (!ok) throw new Error('Clipboard write failed');
-}
-
-async function buildAndCopy({ all, from, to }) {
-  const rows = all
-    ? await getAllSessions()
-    : await getSessionsInRange(from, to);
-  const { tsv, dataRows } = sessionsToTSV(rows);
-  await writeToClipboard(tsv);
-  return { sessionCount: rows.length, dataRows };
 }
 
 export function renderExportPanel(root) {
@@ -109,34 +114,50 @@ export function renderExportPanel(root) {
   const button = el('button', {
     type: 'button', class: 'export__copy-btn', text: 'Copy to clipboard'
   });
-  button.addEventListener('click', async () => {
+  button.addEventListener('click', () => {
+    // Validate synchronously so we don't burn the user gesture on a
+    // failure case, and so we can hand a Promise to ClipboardItem below.
+    const all = allCheckbox.checked;
+    let from = fromInput.value;
+    let to = toInput.value;
+    if (!all && from && to && from > to) [from, to] = [to, from];
+
+    if (!all && (!from || !to)) {
+      setStatus('Pick both from and to dates, or tick "All dates".', 'error');
+      return;
+    }
+
     button.disabled = true;
     setStatus('Copying…');
-    try {
-      const all = allCheckbox.checked;
-      // Swap from/to if user inverted them — match user intent rather than
-      // returning empty.
-      let from = fromInput.value;
-      let to = toInput.value;
-      if (!all && from && to && from > to) [from, to] = [to, from];
 
-      if (!all && (!from || !to)) {
-        setStatus('Pick both from and to dates, or tick "All dates".', 'error');
-        return;
-      }
-
-      const result = await buildAndCopy({ all, from, to });
+    // Kick off the data fetch synchronously; pass the resulting Promise
+    // straight to writeTextToClipboard so iOS Safari sees the clipboard
+    // call inside the click gesture.
+    const dataPromise = (async () => {
+      const rows = all
+        ? await getAllSessions()
+        : await getSessionsInRange(from, to);
+      const { tsv, dataRows } = sessionsToTSV(rows);
       const scope = all ? 'all dates' : (from === to ? from : `${from} → ${to}`);
-      setStatus(
-        `Copied ${result.dataRows} row${result.dataRows === 1 ? '' : 's'} (${scope}).`,
-        'success'
-      );
-    } catch (err) {
-      console.error('export failed', err);
-      setStatus('Copy failed — clipboard permission denied?', 'error');
-    } finally {
-      button.disabled = false;
-    }
+      return { tsv, dataRows, scope };
+    })();
+    const tsvPromise = dataPromise.then((d) => d.tsv);
+
+    writeTextToClipboard(tsvPromise)
+      .then(() => dataPromise)
+      .then((d) => {
+        setStatus(
+          `Copied ${d.dataRows} row${d.dataRows === 1 ? '' : 's'} (${d.scope}).`,
+          'success'
+        );
+      })
+      .catch((err) => {
+        console.error('export failed', err);
+        setStatus('Copy failed — try again.', 'error');
+      })
+      .finally(() => {
+        button.disabled = false;
+      });
   });
 
   const heading = el('h2', { class: 'export__title', text: 'Export' });
