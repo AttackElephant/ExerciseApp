@@ -18,12 +18,19 @@ sw.js                # Service worker (Workbox)
 manifest.json        # PWA manifest
 src/
   app.js             # Entry point, bootstraps app
+  schema.js          # Single source of truth for all persisted data shapes
+                     #   (constants, validateRegime, JSDoc typedefs) — see ADR-003
   db.js              # Dexie schema and all IndexedDB operations
-  regime.js          # Regime loading, validation, and historic snapshot logic
-  session.js         # Session display and logging logic
+  regime.js          # Active-regime read/write, weekday helpers
+  defaultRegime.js   # Embedded default regime
+  session.js         # Date view; renders sessions and input fields
+  log.js             # Per-exercise input field components
   export.js          # TSV construction and clipboard write
-  ui.js              # DOM helpers and rendering functions
-  types.js           # JSDoc @typedef declarations (no runtime cost)
+  regimePanel.js     # Paste-import UI for replacing the active regime
+  images.js          # Per-exercise image paste / view modal
+  ui.js              # DOM helpers (el, mount, clear, formatters)
+vendor/
+  dexie.mjs          # Dexie ES module, vendored for offline precaching
 assets/
   icons/             # PWA icons (192×192, 512×512)
 docs/
@@ -36,6 +43,7 @@ progress.md
 ## Conventions
 
 - No framework — all DOM manipulation via vanilla JS; no virtual DOM
+- All persisted-data shapes live in src/schema.js — constants, validators, and JSDoc typedefs (see ADR-003)
 - All storage operations go through db.js — nothing else touches IndexedDB directly
 - Dates stored and keyed as YYYY-MM-DD strings (device local time, no timezone handling)
 - Each log entry embeds a snapshot of the exercise definition at write time (see US12)

@@ -11,9 +11,14 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 │       │                                             │
 │       └── src/app.js  (entry, SW register)          │
 │              │                                      │
-│              ├── src/regime.js                      │
+│              ├── src/schema.js                      │
+│              │      ├── WEEKDAYS / SESSIONS / …     │
 │              │      ├── validateRegime()            │
+│              │      └── JSDoc typedefs              │
+│              │                                      │
+│              ├── src/regime.js                      │
 │              │      ├── getActiveRegime()           │
+│              │      ├── setActiveRegime()           │
 │              │      └── sessionsForDate()           │
 │              │                                      │
 │              ├── src/defaultRegime.js  (embedded)   │
@@ -23,8 +28,7 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 │              ├── src/regimePanel.js (paste-import)  │
 │              ├── src/images.js      (paste / view)  │
 │              ├── src/db.js          (Dexie I/O)     │
-│              ├── src/ui.js          (DOM helpers)   │
-│              └── src/types.js       (JSDoc typedefs)│
+│              └── src/ui.js          (DOM helpers)   │
 │                                                     │
 │   vendor/dexie.mjs  (ES module, precached)          │
 │   sw.js  (cache-first; precaches all of the above)  │
@@ -42,11 +46,20 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 
 ## Module responsibilities
 
-- **regime.js** — single source of truth for regime shape and validity.
-  Everything else asks `regime.js` for today's exercises.
-- **defaultRegime.js** — the regime shipped with the app. Replaced at runtime
-  once Phase 5 ships paste-import.
-- **session.js** — pure render of today's morning + afternoon sessions.
+- **schema.js** — single source of truth for every persisted-data shape:
+  closed value-sets, `validateRegime`, JSDoc typedefs for `Regime`,
+  `LoggedSession`, `StoredImage`. See ADR-003.
+- **regime.js** — runtime helpers around the active regime: read/write
+  via the meta store, weekday lookup. Re-exports `validateRegime` from
+  `schema.js` for callers that already had it imported here.
+- **defaultRegime.js** — the regime shipped with the app. Replaced at
+  runtime once the user pastes one (Phase 5a).
+- **session.js** — date view; renders sessions and input fields.
+- **log.js** — per-exercise input field components.
+- **export.js** — TSV construction + clipboard write.
+- **regimePanel.js** — paste-import UI for replacing the active regime.
+- **images.js** — per-exercise image paste, view modal, IndexedDB I/O.
+- **db.js** — Dexie wrapper; the only module that touches IndexedDB.
 - **ui.js** — DOM construction helpers (`el`, `mount`, `clear`).
 - **app.js** — wires the above together and registers the service worker.
 
