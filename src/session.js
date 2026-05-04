@@ -1,5 +1,6 @@
-// Today's-session view. Both morning and afternoon ALWAYS render.
-// Phase 2 adds input fields, persistence, per-session "mark complete".
+// Today / historic-date view. Both morning and afternoon ALWAYS render.
+// Phase 3 adds date navigation (date picker + prev/next/today). Future
+// dates are blocked by capping the picker at today.
 
 import { el, formatWeekday, formatDateLong, mount, clear } from './ui.js';
 import { sessionsForDate } from './regime.js';
@@ -16,7 +17,17 @@ function exerciseTarget(def) {
   return `Target: ${parts.join(' · ')}`;
 }
 
-function renderExerciseRow(date, session, index, definition, values) {
+function addDays(date, delta) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + delta);
+  return d;
+}
+
+function isAfter(a, b) {
+  return dateKey(a) > dateKey(b);
+}
+
+function renderExerciseRow(date, session, index, definition, values, regimeDefinitions) {
   const li = el('li', { class: `exercise exercise--${definition.type}` });
 
   const head = el('div', { class: 'exercise__head' }, [
@@ -37,11 +48,11 @@ function renderExerciseRow(date, session, index, definition, values) {
     (patch) => {
       currentValues = { ...currentValues, ...patch };
       applyCompletionClass();
-      saveExerciseValues(date, session, index, [definition], patch).catch((err) => {
+      saveExerciseValues(date, session, index, regimeDefinitions, patch).catch((err) => {
         console.error('saveExerciseValues failed', err);
       });
     },
-    `${session}-${index}`
+    `${date}-${session}-${index}`
   );
 
   li.appendChild(head);
@@ -51,10 +62,10 @@ function renderExerciseRow(date, session, index, definition, values) {
   return li;
 }
 
-async function renderSession(label, date, session, definitions) {
+async function renderSession(label, date, session, regimeDefinitions) {
   const sectionRoot = el('section', { class: 'session' });
 
-  const stored = await loadSession(date, session, definitions ?? []);
+  const stored = await loadSession(date, session, regimeDefinitions ?? []);
   const completeBtn = el('button', {
     type: 'button',
     class: 'session__complete-btn'
@@ -66,13 +77,11 @@ async function renderSession(label, date, session, definitions) {
   };
   updateButtonState(stored.complete);
 
-  // Persist all current definitions when toggling so a fresh row is seeded
-  // with the right shape.
   completeBtn.addEventListener('click', async () => {
     const next = !sectionRoot.classList.contains('session--complete');
     updateButtonState(next);
     try {
-      await setSessionComplete(date, session, next, definitions ?? []);
+      await setSessionComplete(date, session, next, regimeDefinitions ?? []);
     } catch (err) {
       console.error('setSessionComplete failed', err);
       updateButtonState(!next);
@@ -85,7 +94,13 @@ async function renderSession(label, date, session, definitions) {
   ]);
   sectionRoot.appendChild(header);
 
-  if (!definitions || definitions.length === 0) {
+  // Source of truth for what to render: the stored entries' own definition
+  // snapshots when present, otherwise the regime template.
+  const entriesToRender = stored.entries.length > 0
+    ? stored.entries
+    : (regimeDefinitions ?? []).map((def) => ({ definition: def, values: {} }));
+
+  if (entriesToRender.length === 0) {
     sectionRoot.appendChild(
       el('p', { class: 'session__empty', text: 'No exercises scheduled.' })
     );
@@ -93,23 +108,95 @@ async function renderSession(label, date, session, definitions) {
   }
 
   const list = el('ol', { class: 'exercise-list' });
-  for (let i = 0; i < definitions.length; i++) {
+  for (let i = 0; i < entriesToRender.length; i++) {
+    const entry = entriesToRender[i];
     list.appendChild(renderExerciseRow(
-      date, session, i, definitions[i], stored.entries[i]?.values ?? {}
+      date, session, i, entry.definition, entry.values,
+      // Pass the stored definitions back as regimeDefinitions so that any
+      // edit re-saves with the snapshot intact (US12).
+      entriesToRender.map((e) => e.definition)
     ));
   }
   sectionRoot.appendChild(list);
   return sectionRoot;
 }
 
-export async function renderToday(root, regime, date = new Date()) {
-  // Both morning and afternoon ALWAYS render. Visibility is never conditional
-  // on the current time of day — only on whether the regime defines exercises.
+function renderDateNav(date, onDateChange) {
+  const today = new Date();
+  const todayKey = dateKey(today);
+  const dKey = dateKey(date);
+  const isToday = dKey === todayKey;
+  const canGoForward = !isToday;
+
+  const picker = el('input', {
+    type: 'date',
+    class: 'datenav__picker',
+    value: dKey,
+    max: todayKey,
+    'aria-label': 'Select date'
+  });
+  picker.addEventListener('change', () => {
+    if (!picker.value) return;
+    // Build a local-time Date from YYYY-MM-DD so the weekday matches the
+    // device-local interpretation rather than UTC midnight.
+    const [y, m, d] = picker.value.split('-').map(Number);
+    onDateChange(new Date(y, m - 1, d));
+  });
+
+  const prev = el('button', {
+    type: 'button', class: 'datenav__btn', 'aria-label': 'Previous day', text: '‹'
+  });
+  prev.addEventListener('click', () => onDateChange(addDays(date, -1)));
+
+  const next = el('button', {
+    type: 'button',
+    class: 'datenav__btn',
+    'aria-label': 'Next day',
+    text: '›',
+    disabled: !canGoForward
+  });
+  if (canGoForward) {
+    next.addEventListener('click', () => onDateChange(addDays(date, 1)));
+  }
+
+  const todayBtn = el('button', {
+    type: 'button',
+    class: 'datenav__btn datenav__btn--today',
+    text: 'Today',
+    disabled: isToday
+  });
+  if (!isToday) {
+    todayBtn.addEventListener('click', () => onDateChange(new Date()));
+  }
+
+  return el('nav', { class: 'datenav', 'aria-label': 'Date navigation' }, [
+    prev, picker, next, todayBtn
+  ]);
+}
+
+/**
+ * Render the view for an arbitrary date. `onDateChange` is called when the
+ * user picks a different date from the navigation controls; the caller
+ * re-invokes renderForDate with the new date.
+ *
+ * Future dates are not supported (PRD Phase 3 boundary): if a future date
+ * is supplied it is clamped to today.
+ */
+export async function renderForDate(root, regime, date, onDateChange) {
+  const today = new Date();
+  if (isAfter(date, today)) date = today;
+
   const dKey = dateKey(date);
   const { weekday, morning, afternoon } = sessionsForDate(regime, date);
+  const todayKey = dateKey(today);
+  const isToday = dKey === todayKey;
 
   const header = el('header', { class: 'today' }, [
-    el('p', { class: 'today__date', text: formatDateLong(date) }),
+    renderDateNav(date, onDateChange),
+    el('p', {
+      class: 'today__date',
+      text: (isToday ? 'Today · ' : '') + formatDateLong(date)
+    }),
     el('h1', { class: 'today__weekday', text: formatWeekday(weekday) })
   ]);
 

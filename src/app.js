@@ -1,7 +1,7 @@
 // Entry point. Bootstraps the app and registers the service worker.
 
 import { getActiveRegime, validateRegime } from './regime.js';
-import { renderToday } from './session.js';
+import { renderForDate } from './session.js';
 import { el, mount } from './ui.js';
 
 function renderError(root, message) {
@@ -31,7 +31,15 @@ async function boot() {
     renderError(root, result.error);
     return;
   }
-  await renderToday(root, regime);
+
+  let currentDate = new Date();
+  const onDateChange = async (next) => {
+    currentDate = next;
+    await renderForDate(root, regime, currentDate, onDateChange);
+    renderInstallHint(root);
+  };
+
+  await renderForDate(root, regime, currentDate, onDateChange);
   renderInstallHint(root);
 }
 

@@ -39,27 +39,30 @@ function emptyEntries(definitions) {
 }
 
 /**
- * Load the stored session record for a given (date, session). If no record
- * exists, returns a fresh skeleton seeded from the supplied regime
- * definitions but does NOT persist it.
+ * Load the stored session record for a given (date, session). If a row
+ * exists, returns its entries verbatim — including each entry's stored
+ * definition snapshot, which is the source of truth for historic display
+ * (US12). If no row exists, returns a fresh non-persisted skeleton seeded
+ * from `defaultDefinitions` so the caller can render a template.
  *
  * @param {string} date YYYY-MM-DD
  * @param {'morning' | 'afternoon'} session
- * @param {Array} definitions regime exercises for that session
+ * @param {Array} [defaultDefinitions] regime exercises used only when no
+ *        stored row exists; ignored when one does.
  */
-export async function loadSession(date, session, definitions) {
+export async function loadSession(date, session, defaultDefinitions = []) {
   const db = openDb();
   const stored = await db.table(SESSION_TABLE).get([date, session]);
   if (stored) {
-    // Reconcile: if the regime definitions don't match what was stored
-    // (count or names changed since last visit), keep the stored entries
-    // for any matching name and append fresh skeletons for new ones.
     return {
       date,
       session,
       complete: !!stored.complete,
       completedAt: stored.completedAt ?? null,
-      entries: reconcileEntries(stored.entries, definitions)
+      entries: (stored.entries ?? []).map((e) => ({
+        definition: e.definition,
+        values: { ...e.values }
+      }))
     };
   }
   return {
@@ -67,22 +70,8 @@ export async function loadSession(date, session, definitions) {
     session,
     complete: false,
     completedAt: null,
-    entries: emptyEntries(definitions)
+    entries: emptyEntries(defaultDefinitions)
   };
-}
-
-function reconcileEntries(storedEntries, definitions) {
-  const byName = new Map();
-  for (const e of storedEntries ?? []) {
-    if (e?.definition?.name) byName.set(e.definition.name, e);
-  }
-  return definitions.map((def) => {
-    const prior = byName.get(def.name);
-    return {
-      definition: def,
-      values: prior ? prior.values : {}
-    };
-  });
 }
 
 /**
@@ -106,13 +95,17 @@ export async function saveExerciseValues(date, session, index, definitions, valu
       completedAt: null,
       entries: emptyEntries(definitions)
     };
-    // Ensure the entries array is long enough and definitions are present.
-    while (base.entries.length < definitions.length) {
-      base.entries.push({ definition: definitions[base.entries.length], values: {} });
+    // Pad if we're writing past the current length.
+    while (base.entries.length <= index) {
+      const i = base.entries.length;
+      base.entries.push({ definition: definitions?.[i], values: {} });
     }
+    const prior = base.entries[index] ?? {};
     base.entries[index] = {
-      definition: definitions[index],
-      values: { ...base.entries[index].values, ...values }
+      // Preserve the original snapshot once one exists (US12). Only seed it
+      // from the supplied regime definition on the very first write.
+      definition: prior.definition ?? definitions?.[index],
+      values: { ...prior.values, ...values }
     };
     await db.table(SESSION_TABLE).put(base);
   });

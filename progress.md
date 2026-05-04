@@ -89,13 +89,57 @@ Today only — no historic dates yet (Phase 3). No clipboard export, no
 regime updates, no images. No validation beyond field type. No
 progression suggestions.
 
-## Next: Phase 3 — Historic Logging and Date Navigation
-- Date picker / back-nav so the user can jump to any past date.
-- Past dates render the regime template plus stored values, if any.
-- Past dates editable; saves keyed by date.
-- US12: continue storing the definition snapshot per entry — already in
-  place from Phase 2.
+## Phase 3 — Historic Logging and Date Navigation
+
+**Status:** complete (pending iPhone verification).
+
+### Done
+- `src/session.js` — `renderToday` replaced by `renderForDate(root, regime,
+  date, onDateChange)`. Renders date navigation (prev / native picker /
+  next / today). Future dates blocked: the picker `max` is today and the
+  next-day button is disabled when the view is on today. Sessions render
+  from each entry's stored definition snapshot when a row exists, and from
+  the current regime template when the date has no log yet.
+- `src/app.js` — owns the current-date state and re-invokes `renderForDate`
+  when the user picks a different day.
+- `src/db.js` —
+  - `loadSession` now returns stored entries verbatim (with their original
+    definition snapshots), and only seeds from supplied defaults when no
+    row exists. The previous reconcile-by-name behaviour broke US12 by
+    overwriting stored snapshots with current-regime defs.
+  - `saveExerciseValues` preserves the existing definition snapshot on
+    subsequent edits — only the very first write seeds `definition` from
+    the supplied regime. Values still merge as before.
+- `tests/lib/db.test.js` — added cases for snapshot preservation across
+  saves (US12), unlogged-date templating (US10), historic-vs-today
+  isolation. Total suite is now 27 passing.
+- `styles.css` — date-nav row (prev / picker / next / today) styled to
+  match the existing pill-button visual language. Picker uses native
+  `input[type=date]`, which iOS Safari surfaces as a wheel.
+- `sw.js` — `CACHE_VERSION` bumped to v4. No new files added to precache.
+
+### Acceptance check
+- US10: any past date can be reached via the picker or prev button. Past
+  dates with stored data show those values; dates with no log show the
+  current regime template for that weekday with empty inputs.
+- US11: all input fields remain editable on past dates; saves keyed by
+  the navigated date go through the same `saveExerciseValues` path.
+- US12: confirmed by `definition snapshot is preserved across subsequent
+  saves` test — the stored definition is never clobbered by a later edit
+  using a different regime definition.
+
+### Boundaries respected
+No future-date logging (picker capped at today, next-day disabled). No
+clipboard export. No regime updates. No images. No aggregation views.
+
+## Next: Phase 4 — Clipboard Export
+- Date-range picker (from / to / "all").
+- TSV header + one row per exercise per session per date.
+- Self-describing rows so that pre- and post-regime-change data
+  concatenates cleanly in a spreadsheet (US15).
 
 ## Convention check
-None of the conventions in CLAUDE.md were invalidated. The new `db.js`
-module honours the "all IndexedDB I/O goes through `src/db.js`" rule.
+None of the conventions in CLAUDE.md were invalidated. The "each log
+entry embeds a snapshot of the exercise definition at write time"
+convention is now actively enforced by `saveExerciseValues` — the
+snapshot is sealed on first write and never overwritten.

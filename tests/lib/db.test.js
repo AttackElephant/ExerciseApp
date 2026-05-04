@@ -103,20 +103,60 @@ test('completed sessions remain editable (US9)', async () => {
   assert.equal(s.entries[0].values, { distance_km: 5, duration_min: 30 });
 });
 
-test('reconcile preserves values when regime changes order or adds entries', async () => {
+test('loadSession returns stored entries verbatim — ignores supplied defaults', async () => {
   freshDb();
   await saveExerciseValues('2026-05-04', 'afternoon', 0, [PUSHUP_DEF, PLANK_DEF],
     { sets: 3, reps: 15 });
   await saveExerciseValues('2026-05-04', 'afternoon', 1, [PUSHUP_DEF, PLANK_DEF],
     { sets: 3, duration_s: 60 });
 
-  // Regime now has Plank first, Push-up second, plus a new exercise at the end.
+  // Caller passes a different default order plus a new exercise — should be
+  // ignored because a stored row exists. Historic display reflects the
+  // snapshot, not today's regime (US12).
   const NEW = { name: 'Squat', type: 'resistance', sets: 4, reps: 12 };
   const s = await loadSession('2026-05-04', 'afternoon', [PLANK_DEF, PUSHUP_DEF, NEW]);
-  assert.is(s.entries.length, 3);
-  assert.equal(s.entries[0].values, { sets: 3, duration_s: 60 });   // plank
-  assert.equal(s.entries[1].values, { sets: 3, reps: 15 });         // push-up
-  assert.equal(s.entries[2].values, {});                            // new
+  assert.is(s.entries.length, 2);
+  assert.is(s.entries[0].definition.name, 'Push-up');
+  assert.is(s.entries[1].definition.name, 'Plank');
+});
+
+test('definition snapshot is preserved across subsequent saves (US12)', async () => {
+  freshDb();
+  // Initial save with the original definition.
+  const v1Definition = { ...RUN_DEF, distance_km: 5, duration_min: 30 };
+  await saveExerciseValues('2026-05-04', 'morning', 0, [v1Definition],
+    { distance_km: 5.0 });
+
+  // Regime is updated locally — caller passes a different definition for
+  // the same exercise name. The stored snapshot must NOT be overwritten.
+  const v2Definition = { ...RUN_DEF, distance_km: 7, duration_min: 45 };
+  await saveExerciseValues('2026-05-04', 'morning', 0, [v2Definition],
+    { duration_min: 31 });
+
+  const s = await loadSession('2026-05-04', 'morning', [v2Definition]);
+  assert.is(s.entries[0].definition.distance_km, 5);   // original snapshot
+  assert.is(s.entries[0].definition.duration_min, 30); // original snapshot
+  assert.equal(s.entries[0].values, { distance_km: 5.0, duration_min: 31 });
+});
+
+test('loadSession on unlogged date seeds from supplied defaults (US10)', async () => {
+  freshDb();
+  const s = await loadSession('2026-04-25', 'morning', [RUN_DEF]);
+  assert.is(s.complete, false);
+  assert.is(s.entries.length, 1);
+  assert.is(s.entries[0].definition.name, '5k Run');
+  assert.equal(s.entries[0].values, {});
+});
+
+test('historic dates and today are stored independently', async () => {
+  freshDb();
+  await saveExerciseValues('2026-04-27', 'morning', 0, [RUN_DEF], { distance_km: 4.5 });
+  await saveExerciseValues('2026-05-04', 'morning', 0, [RUN_DEF], { distance_km: 5.2 });
+
+  const past = await loadSession('2026-04-27', 'morning', [RUN_DEF]);
+  const today = await loadSession('2026-05-04', 'morning', [RUN_DEF]);
+  assert.equal(past.entries[0].values, { distance_km: 4.5 });
+  assert.equal(today.entries[0].values, { distance_km: 5.2 });
 });
 
 test.run();
