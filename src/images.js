@@ -181,7 +181,9 @@ export function renderImageAffordance(name, initiallyHasImage) {
     wrapper.insertBefore(btn, status);
   };
 
-  render();
+  // Status must be a child of wrapper before render() runs, otherwise
+  // insertBefore(btn, status) throws NotFoundError.
   wrapper.appendChild(status);
+  render();
   return wrapper;
 }

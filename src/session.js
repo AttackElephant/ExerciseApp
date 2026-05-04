@@ -225,10 +225,21 @@ export async function renderForDate(root, regime, date, onDateChange) {
     console.error('listImageNames failed', err);
   }
 
-  const [amSection, pmSection] = await Promise.all([
-    renderSession('Morning', dKey, 'morning', morning, imageNames),
-    renderSession('Afternoon', dKey, 'afternoon', afternoon, imageNames)
-  ]);
+  let amSection, pmSection;
+  try {
+    [amSection, pmSection] = await Promise.all([
+      renderSession('Morning', dKey, 'morning', morning, imageNames),
+      renderSession('Afternoon', dKey, 'afternoon', afternoon, imageNames)
+    ]);
+  } catch (err) {
+    console.error('renderSession failed', err);
+    mount(root, header,
+      el('section', { class: 'error' }, [
+        el('p', { text: `Couldn’t render today’s sessions: ${err.message ?? err}` })
+      ])
+    );
+    return;
+  }
 
   mount(root, header, amSection, pmSection);
 }
