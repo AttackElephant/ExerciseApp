@@ -3,6 +3,7 @@
 import { getActiveRegime, validateRegime } from './regime.js';
 import { renderForDate } from './session.js';
 import { renderExportPanel } from './export.js';
+import { renderRegimePanel } from './regimePanel.js';
 import { el, mount } from './ui.js';
 
 function renderError(root, message) {
@@ -26,28 +27,34 @@ function renderInstallHint(root) {
 
 async function boot() {
   const root = document.getElementById('app');
-  const regime = getActiveRegime();
+  let regime = await getActiveRegime();
   const result = validateRegime(regime);
   if (!result.valid) {
     renderError(root, result.error);
     return;
   }
 
-  // The day view re-renders on date change; the export panel is mounted
-  // once so its from/to state survives navigation.
+  // The day view re-renders on date change or regime change; the export
+  // and regime panels are mounted once so their state survives navigation.
   const dayContainer = el('div', { class: 'day-view' });
   const exportContainer = el('section', { class: 'export-view' });
+  const regimeContainer = el('section', { class: 'regime-view' });
   const hintContainer = el('div', { class: 'hint-view' });
-  mount(root, dayContainer, exportContainer, hintContainer);
+  mount(root, dayContainer, exportContainer, regimeContainer, hintContainer);
 
   let currentDate = new Date();
   const onDateChange = async (next) => {
     currentDate = next;
     await renderForDate(dayContainer, regime, currentDate, onDateChange);
   };
+  const onRegimeChange = async (next) => {
+    regime = next;
+    await renderForDate(dayContainer, regime, currentDate, onDateChange);
+  };
 
   await renderForDate(dayContainer, regime, currentDate, onDateChange);
   renderExportPanel(exportContainer);
+  renderRegimePanel(regimeContainer, { onRegimeChange });
   renderInstallHint(hintContainer);
 }
 

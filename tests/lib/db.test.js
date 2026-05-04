@@ -11,6 +11,9 @@ import {
   setSessionComplete,
   getSessionsInRange,
   getAllSessions,
+  getStoredRegime,
+  setStoredRegime,
+  clearStoredRegime,
   _setDbForTest,
   _internals
 } from '../../src/db.js';
@@ -27,7 +30,8 @@ function freshDb() {
   const name = `${_internals.DB_NAME}-${Math.random().toString(36).slice(2)}`;
   const db = new Dexie(name);
   db.version(1).stores({
-    [_internals.SESSION_TABLE]: '[date+session], date, session, complete'
+    [_internals.SESSION_TABLE]: '[date+session], date, session, complete',
+    [_internals.META_TABLE]: 'key'
   });
   _setDbForTest(db);
   return db;
@@ -198,6 +202,38 @@ test('getAllSessions returns every row sorted asc (US16.5)', async () => {
   assert.is(rows[0].date, '2026-04-25');
   assert.is(rows[1].date, '2026-05-04');
   assert.is(rows[2].date, '2026-05-10');
+});
+
+test('getStoredRegime returns null when nothing stored', async () => {
+  freshDb();
+  const r = await getStoredRegime();
+  assert.is(r, null);
+});
+
+test('setStoredRegime + getStoredRegime round-trip', async () => {
+  freshDb();
+  const regime = {
+    name: 'Pasted', days: { monday: { morning: [RUN_DEF] } }
+  };
+  await setStoredRegime(regime);
+  const got = await getStoredRegime();
+  assert.equal(got, regime);
+});
+
+test('clearStoredRegime removes the stored regime', async () => {
+  freshDb();
+  await setStoredRegime({ name: 'P', days: { monday: { morning: [RUN_DEF] } } });
+  await clearStoredRegime();
+  assert.is(await getStoredRegime(), null);
+});
+
+test('storing a regime does not touch session data (US18)', async () => {
+  freshDb();
+  await saveExerciseValues('2026-05-04', 'morning', 0, [RUN_DEF],
+    { distance_km: 5.2, duration_min: 31, surface: 'outdoor' });
+  await setStoredRegime({ name: 'New', days: { tuesday: { morning: [RUN_DEF] } } });
+  const s = await loadSession('2026-05-04', 'morning', [RUN_DEF]);
+  assert.equal(s.entries[0].values, { distance_km: 5.2, duration_min: 31, surface: 'outdoor' });
 });
 
 test.run();

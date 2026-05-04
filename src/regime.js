@@ -2,6 +2,7 @@
 // All other modules go through this for regime data.
 
 import { defaultRegime } from './defaultRegime.js';
+import { getStoredRegime, setStoredRegime } from './db.js';
 
 const VALID_DAYS = [
   'monday', 'tuesday', 'wednesday', 'thursday',
@@ -113,10 +114,32 @@ export function validateRegime(regime) {
   return ok();
 }
 
-export function getActiveRegime() {
-  // Phase 1: only the embedded default regime exists.
-  // Later phases will read a user-pasted regime from IndexedDB and fall back here.
+/**
+ * Returns the active regime: the user-pasted regime from IndexedDB if one
+ * exists and is still valid, otherwise the embedded default. A stored
+ * regime that fails validation (e.g. corruption) falls back silently to
+ * the default — the user is never left with a broken view.
+ */
+export async function getActiveRegime() {
+  const stored = await getStoredRegime();
+  if (stored) {
+    const v = validateRegime(stored);
+    if (v.valid) return stored;
+    console.error('Stored regime failed validation; using default.', v.error);
+  }
   return defaultRegime;
+}
+
+/**
+ * Validate and persist a new regime. Throws with a plain-text message if
+ * the regime is invalid; callers display the message to the user (US17).
+ * On success the regime becomes active immediately for any subsequent
+ * `getActiveRegime` call.
+ */
+export async function setActiveRegime(regime) {
+  const v = validateRegime(regime);
+  if (!v.valid) throw new Error(v.error);
+  await setStoredRegime(regime);
 }
 
 const WEEKDAY_NAMES = [

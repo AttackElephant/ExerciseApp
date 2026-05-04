@@ -1,12 +1,17 @@
-// IndexedDB access. Single source of truth for logged session state.
-// Schema: one row per (date, session). Each row carries a snapshot of the
-// regime exercises that applied at log time (groundwork for US12) plus the
-// values the user entered.
+// IndexedDB access. Single source of truth for logged session state and
+// for the active regime.
+// Stores:
+//   sessions  — one row per (date, session). Each row carries a snapshot of
+//               the regime exercises that applied at log time (US12) plus
+//               the values the user entered.
+//   meta      — small key/value bag. Currently holds the active regime
+//               under key 'regime' once the user has pasted one.
 
 import Dexie from 'dexie';
 
 const DB_NAME = 'exerciseapp';
 const SESSION_TABLE = 'sessions';
+const META_TABLE = 'meta';
 
 let _db = null;
 
@@ -15,6 +20,10 @@ function openDb() {
   _db = new Dexie(DB_NAME);
   _db.version(1).stores({
     [SESSION_TABLE]: '[date+session], date, session, complete'
+  });
+  _db.version(2).stores({
+    [SESSION_TABLE]: '[date+session], date, session, complete',
+    [META_TABLE]: 'key'
   });
   return _db;
 }
@@ -169,7 +178,29 @@ function sortRows(rows) {
   });
 }
 
+const REGIME_KEY = 'regime';
+
+/** Returns the user-pasted regime if one has been stored, else null. */
+export async function getStoredRegime() {
+  const db = openDb();
+  const row = await db.table(META_TABLE).get(REGIME_KEY);
+  return row ? row.value : null;
+}
+
+/** Persist a regime as the active regime. Caller is responsible for validating. */
+export async function setStoredRegime(regime) {
+  const db = openDb();
+  await db.table(META_TABLE).put({ key: REGIME_KEY, value: regime });
+}
+
+/** Remove any user-pasted regime, reverting to the embedded default. */
+export async function clearStoredRegime() {
+  const db = openDb();
+  await db.table(META_TABLE).delete(REGIME_KEY);
+}
+
 export const _internals = {
   DB_NAME,
-  SESSION_TABLE
+  SESSION_TABLE,
+  META_TABLE
 };

@@ -178,13 +178,57 @@ Clipboard only — no file download, no scheduled export. No filtering
 by exercise type or session. No summary, aggregation, or calculated
 fields. Header is the only metadata.
 
-## Next: Phase 5 — Regime Updates and Exercise Images
-- Paste-import a new regime JSON (validated, atomically replaces the
-  active regime; existing logs untouched per US18 — already enforced
-  by Phase 3's snapshot semantics).
-- Per-resistance-exercise image upload via clipboard paste; stored in
-  IndexedDB keyed by exercise name; persists across regime updates.
-- Info button + image modal viewer.
+## Phase 5a — Regime Paste-Import
+
+**Status:** complete (pending iPhone verification).
+
+Per the PRD's "flag before starting" note, Phase 5 was split into 5a
+(regime updates, US17/US18) and 5b (images, US19–US21). 5b will be a
+follow-up branch.
+
+### Done
+- `src/db.js` — bumped to schema v2; added a `meta` key/value table.
+  New helpers `getStoredRegime`, `setStoredRegime`, `clearStoredRegime`.
+- `src/regime.js` — `getActiveRegime` is now async and reads the stored
+  regime from the meta table, falling back to the embedded default if
+  nothing is stored or the stored regime fails validation. New
+  `setActiveRegime(regime)` validates first and throws a plain-text
+  error if invalid (US17).
+- `src/regimePanel.js` (new) — collapsed `<details>` panel with a
+  textarea + "Apply regime" button + status line. Handles JSON parse
+  errors and validation errors with plain-text messages. On success it
+  fires `onRegimeChange(newRegime)` so the day view re-renders.
+- `src/app.js` — awaits the active regime at boot, mounts the regime
+  panel below the export panel, and re-renders the day view via
+  `onRegimeChange` when the user applies a new one.
+- `styles.css` — regime panel styling matched to the existing card
+  language.
+- `sw.js` — precache list adds `regimePanel.js`; `CACHE_VERSION` → v7.
+- Tests: `tests/lib/db.test.js` adds 4 cases (meta round-trip, clear,
+  US18 isolation between regime writes and session writes);
+  `tests/lib/regime.test.js` adds 4 async cases (default fallback,
+  store/retrieve, invalid input rejected, corrupted-stored fallback).
+  Suite is now 46 passing.
+
+### Acceptance check
+- US17: paste valid JSON + tap Apply → stored, immediate re-render of
+  the day view; paste invalid JSON or invalid regime → existing regime
+  unchanged, plain-text error shown inline.
+- US18: writing to the meta table never touches the sessions table;
+  Phase 3's snapshot semantics already keep historic logs coherent
+  across regime swaps.
+
+### Boundaries respected
+Paste only — no in-app regime editor. No version history or rollback
+(the user can paste an old regime back in to revert). No images yet
+(Phase 5b).
+
+## Next: Phase 5b — Exercise Images
+- Per-resistance-exercise image upload via clipboard paste, stored in
+  IndexedDB keyed by exercise name.
+- Info button next to exercises that have an associated image; tap to
+  view full-screen / modal; dismissible by tap.
+- Images persist across app restarts and regime updates (US21).
 
 ## Convention check
 None of the conventions in CLAUDE.md were invalidated. The "each log
