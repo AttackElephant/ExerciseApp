@@ -23,7 +23,7 @@ function renderInstallHint(root) {
   root.appendChild(hint);
 }
 
-function boot() {
+async function boot() {
   const root = document.getElementById('app');
   const regime = getActiveRegime();
   const result = validateRegime(regime);
@@ -31,7 +31,7 @@ function boot() {
     renderError(root, result.error);
     return;
   }
-  renderToday(root, regime);
+  await renderToday(root, regime);
   renderInstallHint(root);
 }
 

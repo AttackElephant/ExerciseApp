@@ -7,7 +7,7 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 ```
 ┌──────────────── iPhone Safari (PWA) ────────────────┐
 │                                                     │
-│   index.html ── styles.css                          │
+│   index.html ── styles.css ── importmap → dexie     │
 │       │                                             │
 │       └── src/app.js  (entry, SW register)          │
 │              │                                      │
@@ -18,12 +18,18 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 │              │                                      │
 │              ├── src/defaultRegime.js  (embedded)   │
 │              ├── src/session.js  (today renderer)   │
+│              ├── src/log.js      (form fields)      │
+│              ├── src/db.js       (Dexie I/O)        │
 │              ├── src/ui.js       (DOM helpers)      │
 │              └── src/types.js    (JSDoc typedefs)   │
 │                                                     │
+│   vendor/dexie.mjs  (ES module, precached)          │
 │   sw.js  (cache-first; precaches all of the above)  │
 │                                                     │
-│   IndexedDB (Phase 2+, via src/db.js)               │
+│   IndexedDB                                         │
+│     sessions  [date+session] →                      │
+│       { complete, completedAt, entries: [           │
+│         { definition, values } ] }                  │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -37,11 +43,18 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 - **ui.js** — DOM construction helpers (`el`, `mount`, `clear`).
 - **app.js** — wires the above together and registers the service worker.
 
-## Storage (Phase 2+)
+## Storage
 
-All IndexedDB I/O will go through `src/db.js`. No other module touches
-IndexedDB directly. Per-day log entries embed a snapshot of each exercise
-definition so historic dates remain coherent across regime updates (PRD US12).
+All IndexedDB I/O goes through `src/db.js` (Dexie). No other module touches
+IndexedDB directly. Each row in the `sessions` store is keyed by
+`[date+session]` and embeds a snapshot of each exercise's definition next to
+the values the user entered. The snapshot is groundwork for PRD US12 — it
+means historic dates stay coherent across future regime updates without any
+schema migration.
+
+Dexie ships as a vendored ES module (`vendor/dexie.mjs`) and is resolved via
+an import map declared in `index.html`, so `import Dexie from 'dexie'` works
+identically in the browser and under Node tests.
 
 ## Service worker
 

@@ -4,6 +4,10 @@
     "test": "uvu tests .test.js"
   },
   "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
     "uvu": "^0.5.6"
+  },
+  "dependencies": {
+    "dexie": "^4.4.2"
   }
 }
