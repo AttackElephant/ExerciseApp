@@ -4,6 +4,7 @@
     "test": "uvu tests .test.js"
   },
   "devDependencies": {
+    "jsdom": "^29.1.1",
     "uvu": "^0.5.6"
   }
 }
