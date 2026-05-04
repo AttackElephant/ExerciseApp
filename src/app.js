@@ -4,6 +4,7 @@ import { getActiveRegime, validateRegime } from './regime.js';
 import { renderForDate } from './session.js';
 import { renderExportPanel } from './export.js';
 import { renderRegimePanel } from './regimePanel.js';
+import { renderTestingPanel } from './testingPanel.js'; // TESTING ONLY — remove at go-live
 import { el, mount } from './ui.js';
 
 function renderError(root, message) {
@@ -39,8 +40,9 @@ async function boot() {
   const dayContainer = el('div', { class: 'day-view' });
   const exportContainer = el('section', { class: 'export-view' });
   const regimeContainer = el('section', { class: 'regime-view' });
+  const testingContainer = el('section', { class: 'testing-view' }); // TESTING ONLY
   const hintContainer = el('div', { class: 'hint-view' });
-  mount(root, dayContainer, exportContainer, regimeContainer, hintContainer);
+  mount(root, dayContainer, exportContainer, regimeContainer, testingContainer, hintContainer);
 
   let currentDate = new Date();
   const onDateChange = async (next) => {
@@ -52,9 +54,17 @@ async function boot() {
     await renderForDate(dayContainer, regime, currentDate, onDateChange);
   };
 
+  // After a destructive reset the active regime may have reverted to the
+  // default and stored sessions may be gone — re-fetch and re-render.
+  const onReset = async () => {
+    regime = await getActiveRegime();
+    await renderForDate(dayContainer, regime, currentDate, onDateChange);
+  };
+
   await renderForDate(dayContainer, regime, currentDate, onDateChange);
   renderExportPanel(exportContainer);
   renderRegimePanel(regimeContainer, { onRegimeChange });
+  renderTestingPanel(testingContainer, { onReset }); // TESTING ONLY — remove at go-live
   renderInstallHint(hintContainer);
 }
 

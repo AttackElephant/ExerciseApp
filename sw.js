@@ -1,7 +1,7 @@
 // Cache-first service worker. Single user, small asset set.
 // Hand-rolled rather than Workbox: see docs/adr/002-service-worker.md.
 
-const CACHE_VERSION = 'exerciseapp-v7';
+const CACHE_VERSION = 'exerciseapp-v8';
 const PRECACHE = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const PRECACHE = [
   './src/log.js',
   './src/export.js',
   './src/regimePanel.js',
+  './src/testingPanel.js', // TESTING ONLY — remove at go-live
   './vendor/dexie.mjs',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png'

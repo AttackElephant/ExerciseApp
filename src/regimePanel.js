@@ -57,7 +57,7 @@ export function renderRegimePanel(root, { onRegimeChange } = {}) {
       if (typeof onRegimeChange === 'function') {
         await onRegimeChange(next);
       }
-      setStatus('Regime applied. Today’s view updated.', 'success');
+      setStatus('Regime applied.', 'success');
     } catch (err) {
       // setActiveRegime throws an Error whose message is the validation
       // failure straight from validateRegime — show it verbatim (US17).

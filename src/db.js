@@ -199,6 +199,18 @@ export async function clearStoredRegime() {
   await db.table(META_TABLE).delete(REGIME_KEY);
 }
 
+/** Delete every session row for a given date (both morning and afternoon). */
+export async function clearSessionsForDate(date) {
+  const db = openDb();
+  await db.table(SESSION_TABLE).where('date').equals(date).delete();
+}
+
+/** Delete every session row across all dates. Destructive. */
+export async function clearAllSessions() {
+  const db = openDb();
+  await db.table(SESSION_TABLE).clear();
+}
+
 export const _internals = {
   DB_NAME,
   SESSION_TABLE,
