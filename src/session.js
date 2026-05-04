@@ -4,8 +4,12 @@
 
 import { el, formatWeekday, formatDateLong, mount, clear } from './ui.js';
 import { sessionsForDate } from './regime.js';
-import { loadSession, saveExerciseValues, setSessionComplete, dateKey } from './db.js';
+import {
+  loadSession, saveExerciseValues, setSessionComplete,
+  dateKey, listImageNames
+} from './db.js';
 import { renderExerciseFields, isEntryComplete } from './log.js';
+import { renderImageAffordance } from './images.js';
 
 function exerciseTarget(def) {
   if (def.type === 'running') {
@@ -27,13 +31,18 @@ function isAfter(a, b) {
   return dateKey(a) > dateKey(b);
 }
 
-function renderExerciseRow(date, session, index, definition, values, regimeDefinitions) {
+function renderExerciseRow(date, session, index, definition, values, regimeDefinitions, imageNames) {
   const li = el('li', { class: `exercise exercise--${definition.type}` });
 
-  const head = el('div', { class: 'exercise__head' }, [
-    el('span', { class: 'exercise__name', text: definition.name }),
-    el('span', { class: 'exercise__type', text: definition.type })
-  ]);
+  const headChildren = [
+    el('span', { class: 'exercise__name', text: definition.name })
+  ];
+  // Image affordance is resistance-only per US19.
+  if (definition.type === 'resistance') {
+    headChildren.push(renderImageAffordance(definition.name, imageNames?.has(definition.name)));
+  }
+  headChildren.push(el('span', { class: 'exercise__type', text: definition.type }));
+  const head = el('div', { class: 'exercise__head' }, headChildren);
   const target = el('p', { class: 'exercise__target', text: exerciseTarget(definition) });
 
   let currentValues = { ...values };
@@ -62,7 +71,7 @@ function renderExerciseRow(date, session, index, definition, values, regimeDefin
   return li;
 }
 
-async function renderSession(label, date, session, regimeDefinitions) {
+async function renderSession(label, date, session, regimeDefinitions, imageNames) {
   const sectionRoot = el('section', { class: 'session' });
 
   const stored = await loadSession(date, session, regimeDefinitions ?? []);
@@ -114,7 +123,8 @@ async function renderSession(label, date, session, regimeDefinitions) {
       date, session, i, entry.definition, entry.values,
       // Pass the stored definitions back as regimeDefinitions so that any
       // edit re-saves with the snapshot intact (US12).
-      entriesToRender.map((e) => e.definition)
+      entriesToRender.map((e) => e.definition),
+      imageNames
     ));
   }
   sectionRoot.appendChild(list);
@@ -206,9 +216,18 @@ export async function renderForDate(root, regime, date, onDateChange) {
   const placeholder = el('p', { class: 'session__empty', text: 'Loading…' });
   root.appendChild(placeholder);
 
+  // Fetch the set of image names once per render so each resistance row
+  // can decide synchronously whether to show "Paste" or "View".
+  let imageNames = new Set();
+  try {
+    imageNames = await listImageNames();
+  } catch (err) {
+    console.error('listImageNames failed', err);
+  }
+
   const [amSection, pmSection] = await Promise.all([
-    renderSession('Morning', dKey, 'morning', morning),
-    renderSession('Afternoon', dKey, 'afternoon', afternoon)
+    renderSession('Morning', dKey, 'morning', morning, imageNames),
+    renderSession('Afternoon', dKey, 'afternoon', afternoon, imageNames)
   ]);
 
   mount(root, header, amSection, pmSection);

@@ -120,16 +120,85 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 .exercise__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.5rem;
 }
-.exercise__name { font-weight: 600; }
+.exercise__name { font-weight: 600; flex: 1 1 auto; min-width: 0; }
 .exercise__type {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
+}
+
+.image-aff {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.image-aff__btn {
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.image-aff__btn[disabled] { opacity: 0.5; cursor: progress; }
+.image-aff__btn--paste { color: var(--muted); }
+.image-aff__status {
+  font-size: 0.75rem;
+  color: var(--muted);
+  min-width: 0;
+}
+.image-aff__status[data-kind="success"] { color: var(--success); }
+.image-aff__status[data-kind="error"]   { color: #b91c1c; }
+
+.img-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top) 1rem env(safe-area-inset-bottom);
+}
+.img-modal__bar {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  right: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 1;
+}
+.img-modal__btn {
+  font: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.9rem;
+}
+.img-modal__btn--close {
+  width: 2.4rem; height: 2.4rem; padding: 0;
+  font-size: 1.4rem; line-height: 1;
+}
+.img-modal__btn--delete { background: rgba(220, 38, 38, 0.65); }
+.img-modal__img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
 }
 .exercise__target {
   margin: 0.25rem 0 0.6rem;

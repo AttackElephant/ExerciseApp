@@ -21,6 +21,7 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 │              ├── src/log.js         (form fields)   │
 │              ├── src/export.js      (TSV+clipboard) │
 │              ├── src/regimePanel.js (paste-import)  │
+│              ├── src/images.js      (paste / view)  │
 │              ├── src/db.js          (Dexie I/O)     │
 │              ├── src/ui.js          (DOM helpers)   │
 │              └── src/types.js       (JSDoc typedefs)│
@@ -34,6 +35,8 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 │         { definition, values } ] }                  │
 │     meta       key →                                │
 │       'regime' → { value: <user-pasted regime> }    │
+│     images    name →                                │
+│       { blob, mime, addedAt }                       │
 └─────────────────────────────────────────────────────┘
 ```
 

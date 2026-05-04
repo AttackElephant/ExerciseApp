@@ -14,6 +14,10 @@ import {
   getStoredRegime,
   setStoredRegime,
   clearStoredRegime,
+  putImage,
+  getImage,
+  deleteImage,
+  listImageNames,
   _setDbForTest,
   _internals
 } from '../../src/db.js';
@@ -31,10 +35,17 @@ function freshDb() {
   const db = new Dexie(name);
   db.version(1).stores({
     [_internals.SESSION_TABLE]: '[date+session], date, session, complete',
-    [_internals.META_TABLE]: 'key'
+    [_internals.META_TABLE]: 'key',
+    [_internals.IMAGES_TABLE]: 'name'
   });
   _setDbForTest(db);
   return db;
+}
+
+function makeBlob(text = 'pixels') {
+  // fake-indexeddb stores arbitrary structured-cloneable values, so we
+  // don't need a real PNG — any Blob suffices for round-trip tests.
+  return new Blob([text], { type: 'image/png' });
 }
 
 test('dateKey formats device-local YYYY-MM-DD', () => {
@@ -234,6 +245,63 @@ test('storing a regime does not touch session data (US18)', async () => {
   await setStoredRegime({ name: 'New', days: { tuesday: { morning: [RUN_DEF] } } });
   const s = await loadSession('2026-05-04', 'morning', [RUN_DEF]);
   assert.equal(s.entries[0].values, { distance_km: 5.2, duration_min: 31, surface: 'outdoor' });
+});
+
+// --- Phase 5b: per-exercise images ---
+
+test('putImage + getImage round-trips a blob (US19)', async () => {
+  freshDb();
+  const blob = makeBlob('image-bytes');
+  await putImage('Plank', blob, 'image/png');
+  const got = await getImage('Plank');
+  assert.is(got.name, 'Plank');
+  assert.is(got.mime, 'image/png');
+  assert.ok(got.blob);
+  assert.type(got.addedAt, 'number');
+});
+
+test('getImage returns null when no image exists', async () => {
+  freshDb();
+  assert.is(await getImage('Plank'), null);
+});
+
+test('listImageNames returns the set of named images', async () => {
+  freshDb();
+  await putImage('Plank', makeBlob());
+  await putImage('Push-up', makeBlob());
+  const names = await listImageNames();
+  assert.ok(names.has('Plank'));
+  assert.ok(names.has('Push-up'));
+  assert.is(names.size, 2);
+});
+
+test('deleteImage removes only the named image', async () => {
+  freshDb();
+  await putImage('Plank', makeBlob());
+  await putImage('Push-up', makeBlob());
+  await deleteImage('Plank');
+  assert.is(await getImage('Plank'), null);
+  assert.ok(await getImage('Push-up'));
+});
+
+test('regime updates do not delete images keyed by name (US21)', async () => {
+  freshDb();
+  await putImage('Plank', makeBlob());
+  await setStoredRegime({
+    name: 'New',
+    days: { tuesday: { morning: [RUN_DEF] } }
+  });
+  // After regime change the image is still present, so a new regime that
+  // happens to name an exercise 'Plank' will inherit it.
+  assert.ok(await getImage('Plank'));
+});
+
+test('session writes do not touch image storage', async () => {
+  freshDb();
+  await putImage('Plank', makeBlob());
+  await saveExerciseValues('2026-05-04', 'afternoon', 0, [PLANK_DEF],
+    { sets: 3, duration_s: 60 });
+  assert.ok(await getImage('Plank'));
 });
 
 test.run();

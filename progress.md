@@ -233,12 +233,63 @@ Paste only — no in-app regime editor. No version history or rollback
 (the user can paste an old regime back in to revert). No images yet
 (Phase 5b).
 
-## Next: Phase 5b — Exercise Images
-- Per-resistance-exercise image upload via clipboard paste, stored in
-  IndexedDB keyed by exercise name.
-- Info button next to exercises that have an associated image; tap to
-  view full-screen / modal; dismissible by tap.
-- Images persist across app restarts and regime updates (US21).
+## Phase 5b — Exercise Images
+
+**Status:** complete (pending iPhone verification).
+
+### Done
+- `src/db.js` — schema bumped to v3 with a new `images` store keyed by
+  exercise name. New helpers `putImage`, `getImage`, `deleteImage`,
+  `listImageNames`, `clearAllImages`. Stored record:
+  `{ name, blob, mime, addedAt }`.
+- `src/images.js` (new) — three pieces:
+  - `readImageFromClipboard()`: uses `navigator.clipboard.read()` to find
+    an `image/*` MIME type and return its Blob.
+  - `showImageModal(name, onDelete)`: full-screen overlay rendering the
+    stored Blob via `URL.createObjectURL`. Tap-to-dismiss (US20). Small
+    Close and Delete buttons in the bar; Delete asks for `confirm()` then
+    notifies the caller so the row's affordance refreshes.
+  - `renderImageAffordance(name, hasImage)`: self-contained inline button.
+    Renders 📋 Paste when no image, ℹ View when one exists. Pasting a
+    non-image clipboard returns a "No image in clipboard." status.
+- `src/session.js` — fetches `listImageNames()` once per render and
+  passes the set down to each row. Resistance exercises render the
+  affordance inline next to their name; running exercises do not (US19
+  is resistance-only).
+- `styles.css` — pill-style 2 rem icon button, fullscreen modal with
+  safe-area-aware control bar.
+- `sw.js` — precache extended with `src/images.js`; `CACHE_VERSION` → v9.
+- Tests: 6 new in `tests/lib/db.test.js` (round-trip, null on miss,
+  list, delete, regime-update isolation US21, session-write isolation).
+  Suite is now 52 passing.
+
+### Acceptance check
+- US19: 📋 button on resistance exercises captures the clipboard image
+  and stores it under the exercise name; the affordance switches to ℹ
+  on success.
+- US20: tapping ℹ opens a full-screen modal with the image; tapping the
+  overlay (or Close, or Esc on desktop) dismisses it.
+- US21: images live in their own store; regime writes (`setStoredRegime`)
+  and session writes (`saveExerciseValues`) leave them untouched. Tests
+  cover both paths. A new regime that names the same exercise inherits
+  the image automatically because the key is just the name.
+
+### Boundaries respected
+Clipboard paste only — no file picker. No image editing/cropping/resizing.
+No bulk import. No regime version history.
+
+### Phase 5 done-when (overall)
+Paste a new regime, see today change; navigate to a historic logged
+date and see the snapshot regime; tap ℹ on a resistance exercise that
+has an image and see the image; all in airplane mode. Confirmed in code;
+device verification pending.
+
+## Next
+Phase 5 covers all PRD requirements. Remaining product work:
+- Remove the testing panel (5 steps documented above) before public
+  release.
+- Replace the placeholder PNG icons in `assets/icons/` with branded
+  artwork.
 
 ## Convention check
 None of the conventions in CLAUDE.md were invalidated. The "each log

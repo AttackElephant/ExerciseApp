@@ -1,17 +1,21 @@
-// IndexedDB access. Single source of truth for logged session state and
-// for the active regime.
+// IndexedDB access. Single source of truth for logged session state,
+// the active regime, and per-exercise demonstration images.
 // Stores:
 //   sessions  — one row per (date, session). Each row carries a snapshot of
 //               the regime exercises that applied at log time (US12) plus
 //               the values the user entered.
 //   meta      — small key/value bag. Currently holds the active regime
 //               under key 'regime' once the user has pasted one.
+//   images    — one row per resistance-exercise name; carries the image
+//               blob and its MIME type. Keyed by name so a regime update
+//               that retains the same name retains the image (US21).
 
 import Dexie from 'dexie';
 
 const DB_NAME = 'exerciseapp';
 const SESSION_TABLE = 'sessions';
 const META_TABLE = 'meta';
+const IMAGES_TABLE = 'images';
 
 let _db = null;
 
@@ -24,6 +28,11 @@ function openDb() {
   _db.version(2).stores({
     [SESSION_TABLE]: '[date+session], date, session, complete',
     [META_TABLE]: 'key'
+  });
+  _db.version(3).stores({
+    [SESSION_TABLE]: '[date+session], date, session, complete',
+    [META_TABLE]: 'key',
+    [IMAGES_TABLE]: 'name'
   });
   return _db;
 }
@@ -211,8 +220,46 @@ export async function clearAllSessions() {
   await db.table(SESSION_TABLE).clear();
 }
 
+/**
+ * Store an image against an exercise name (US19). Replaces any existing
+ * image for the same name.
+ */
+export async function putImage(name, blob, mime) {
+  const db = openDb();
+  await db.table(IMAGES_TABLE).put({
+    name, blob, mime: mime ?? blob?.type ?? 'image/png', addedAt: Date.now()
+  });
+}
+
+/** Fetch the image record for an exercise, or null if none stored. */
+export async function getImage(name) {
+  const db = openDb();
+  const row = await db.table(IMAGES_TABLE).get(name);
+  return row ?? null;
+}
+
+/** Remove the image for an exercise. */
+export async function deleteImage(name) {
+  const db = openDb();
+  await db.table(IMAGES_TABLE).delete(name);
+}
+
+/** Return the set of exercise names that currently have a stored image. */
+export async function listImageNames() {
+  const db = openDb();
+  const keys = await db.table(IMAGES_TABLE).toCollection().primaryKeys();
+  return new Set(keys);
+}
+
+/** Wipe every stored image. Destructive. */
+export async function clearAllImages() {
+  const db = openDb();
+  await db.table(IMAGES_TABLE).clear();
+}
+
 export const _internals = {
   DB_NAME,
   SESSION_TABLE,
-  META_TABLE
+  META_TABLE,
+  IMAGES_TABLE
 };
