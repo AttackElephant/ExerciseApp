@@ -99,7 +99,7 @@ A single user needs to log daily morning and afternoon exercise sessions against
 
 - **US16:** As the user, I can copy a single day by setting from and to dates to the same date — Acceptance criteria: Single-day copy produces the same format as a range; no special case UI required.
 
-- US16.5: As the user, I can copy all existing data with a single button press - Acceptance criteria: Date range picker has an option for all which copies all session data; user receives confirmation that copy succeeded.
+- **US16.5:** As the user, I can copy all existing data with a single button press - Acceptance criteria: Date range picker has an option for all which copies all session data; user receives confirmation that copy succeeded.
 
 ### Boundaries
 
@@ -152,4 +152,3 @@ A single user needs to log daily morning and afternoon exercise sessions against
 4. Image storage size is not formally bounded. This is acceptable for a single-user personal tool.
 5. "Today" is determined by the device clock. No timezone handling is required.
 6. The app is English-only, single-user, no authentication, no admin views at any phase.
-

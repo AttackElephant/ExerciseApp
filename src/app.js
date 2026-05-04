@@ -35,13 +35,15 @@ function boot() {
   renderInstallHint(root);
 }
 
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {
+    navigator.serviceWorker.register('/ExerciseApp/sw.js').catch(() => {
       // Offline-first still works; just log silently in console.
     });
   });
 }
+
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', boot);
