@@ -1,41 +1,65 @@
 // tests/ui/session.test.js
-// jsdom-backed tests for session rendering (session.js + ui.js)
+// jsdom-backed UI tests for session.js. Wires fake-indexeddb so the db
+// layer works in Node, and a real jsdom Document so DOM ops behave as
+// they would on a device — which is the only way to catch bugs like
+// insertBefore-against-non-child that don't show up in unit tests.
 
+import 'fake-indexeddb/auto';
 import { test } from 'uvu';
 import * as assert from 'uvu/assert';
 import { JSDOM } from 'jsdom';
+import Dexie from 'dexie';
 
-// --- jsdom setup ---
-// Must run before importing modules that touch `document` or `window`.
-
+// jsdom MUST install its globals before any module that touches `document`
+// loads. globalThis.navigator is a read-only getter on modern Node, so we
+// install it via defineProperty instead of plain assignment.
 const dom = new JSDOM('<!DOCTYPE html><body><main id="app"></main></body>', {
-  url: 'https://example.com'
+  url: 'https://example.com/'
 });
-global.window = dom.window;
-global.document = dom.window.document;
-global.navigator = dom.window.navigator;
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+Object.defineProperty(globalThis, 'navigator', {
+  value: dom.window.navigator,
+  configurable: true
+});
+globalThis.HTMLElement = dom.window.HTMLElement;
+globalThis.Node = dom.window.Node;
 
-// Dynamic import after globals are set
-const { el, mount, formatWeekday, formatDateLong } = await import('../../src/session.js');
-const { renderToday } = await import('../../src/session.js');
+// Dynamic imports so the modules see the globals above.
+const { renderForDate } = await import('../../src/session.js');
+const { _setDbForTest, _internals } = await import('../../src/db.js');
 
-// --- Helpers ---
+// --- Fixtures ---
+
+const RUN = {
+  name: '5k Run', type: 'running',
+  distance_km: 5, duration_min: 30, surface: 'outdoor'
+};
+const PUSHUP = { name: 'Push-up', type: 'resistance', sets: 3, reps: 15 };
+const PLANK  = { name: 'Plank', type: 'resistance', sets: 3, duration_s: 60 };
 
 const MONDAY_REGIME = {
   days: {
-    monday: {
-      morning: [
-        { name: '5k Run', type: 'running', distance_km: 5, duration_min: 30, surface: 'outdoor' }
-      ],
-      afternoon: [
-        { name: 'Push-up', type: 'resistance', sets: 3, reps: 15 },
-        { name: 'Plank', type: 'resistance', sets: 3, duration_s: 60 }
-      ]
-    }
+    monday: { morning: [RUN], afternoon: [PUSHUP, PLANK] }
   }
 };
 
-const MONDAY = new Date('2026-05-04T09:00:00'); // Known Monday
+const REST_DAY_REGIME = { days: {} };
+
+const MONDAY = new Date(2026, 4, 4); // 2026-05-04 is a Monday
+const SUNDAY = new Date(2026, 4, 3);
+
+function freshDb() {
+  const name = `${_internals.DB_NAME}-${Math.random().toString(36).slice(2)}`;
+  const db = new Dexie(name);
+  db.version(3).stores({
+    [_internals.SESSION_TABLE]: '[date+session], date, session, complete',
+    [_internals.META_TABLE]: 'key',
+    [_internals.IMAGES_TABLE]: 'name'
+  });
+  _setDbForTest(db);
+  return db;
+}
 
 function freshRoot() {
   const root = document.getElementById('app');
@@ -43,125 +67,113 @@ function freshRoot() {
   return root;
 }
 
-// --- renderToday: structure ---
+// --- Structure ---
 
-test('renders a header with date and weekday', () => {
+test('renderForDate replaces the Loading placeholder with the day view', async () => {
+  freshDb();
   const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
-  const header = root.querySelector('header.today');
-  assert.ok(header, 'header.today should exist');
-  assert.ok(header.querySelector('.today__weekday'), '.today__weekday should exist');
-  assert.ok(header.querySelector('.today__date'), '.today__date should exist');
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
+  // The placeholder text must NOT survive — that's the iPhone "stuck on
+  // Loading…" symptom we're guarding against.
+  const empties = [...root.querySelectorAll('.session__empty')]
+    .map((n) => n.textContent);
+  assert.not.ok(empties.includes('Loading…'),
+    'page should not be stuck on Loading…');
 });
 
-test('weekday heading contains Monday', () => {
+test('renders header with date nav, date string, and weekday heading', async () => {
+  freshDb();
   const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
-  const heading = root.querySelector('.today__weekday');
-  assert.ok(heading.textContent.toLowerCase().includes('monday'));
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
+  assert.ok(root.querySelector('header.today'));
+  assert.ok(root.querySelector('.datenav'));
+  assert.ok(root.querySelector('.today__date'));
+  assert.ok(root.querySelector('.today__weekday'));
+  assert.ok(root.querySelector('.today__weekday').textContent
+    .toLowerCase().includes('monday'));
 });
 
-test('renders both morning and afternoon sessions on a training day', () => {
+test('renders both Morning and Afternoon sessions on a training day', async () => {
+  freshDb();
   const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
+  const titles = [...root.querySelectorAll('.session__title')]
+    .map((n) => n.textContent);
+  assert.equal(titles, ['Morning', 'Afternoon']);
+});
+
+test('rest day still renders both sessions, each with empty-state copy', async () => {
+  // Phase 1's `.rest-day` short-circuit was removed; both sessions always
+  // render so the user can register exercises on a non-training day.
+  freshDb();
+  const root = freshRoot();
+  await renderForDate(root, REST_DAY_REGIME, SUNDAY, () => {});
   const sessions = root.querySelectorAll('section.session');
-  assert.is(sessions.length, 2, 'should render exactly 2 sessions');
+  assert.is(sessions.length, 2);
+  const empties = [...root.querySelectorAll('.session__empty')]
+    .map((n) => n.textContent);
+  assert.ok(empties.every((t) => t === 'No exercises scheduled.'));
 });
 
-test('session titles are Morning and Afternoon', () => {
+// --- Per-exercise rendering ---
+
+test('running exercise shows distance / duration / surface in its target line', async () => {
+  freshDb();
   const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
-  const titles = [...root.querySelectorAll('.session__title')].map(n => n.textContent);
-  assert.ok(titles.includes('Morning'), 'Morning title should be present');
-  assert.ok(titles.includes('Afternoon'), 'Afternoon title should be present');
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
+  const target = root.querySelector('.exercise--running .exercise__target');
+  assert.ok(target);
+  assert.ok(target.textContent.includes('5 km'));
+  assert.ok(target.textContent.includes('30 min'));
+  assert.ok(target.textContent.includes('outdoor'));
 });
 
-// --- renderToday: rest day ---
-
-test('renders rest day message when no sessions scheduled', () => {
+test('resistance with reps shows sets and reps in its target line', async () => {
+  freshDb();
   const root = freshRoot();
-  const sundayRegime = { days: {} };
-  const SUNDAY = new Date('2026-05-03T09:00:00');
-  renderToday(root, sundayRegime, SUNDAY);
-  const restDay = root.querySelector('.rest-day');
-  assert.ok(restDay, '.rest-day section should exist');
-  assert.not.ok(root.querySelector('section.session'), 'no session sections on rest day');
-});
-
-// --- renderToday: exercise rendering ---
-
-test('running exercise shows distance, duration, and surface', () => {
-  const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
-  const detail = root.querySelector('.exercise--running .exercise__detail');
-  assert.ok(detail, 'running exercise detail should exist');
-  assert.ok(detail.textContent.includes('5 km'));
-  assert.ok(detail.textContent.includes('30 min'));
-  assert.ok(detail.textContent.includes('outdoor'));
-});
-
-test('resistance exercise with reps shows sets and reps', () => {
-  const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
   const items = [...root.querySelectorAll('.exercise--resistance')];
-  const pushup = items.find(n => n.querySelector('.exercise__name').textContent === 'Push-up');
-  assert.ok(pushup, 'Push-up exercise should be in DOM');
-  const detail = pushup.querySelector('.exercise__detail');
-  assert.ok(detail.textContent.includes('3 sets'));
-  assert.ok(detail.textContent.includes('15 reps'));
+  const pushup = items.find((n) =>
+    n.querySelector('.exercise__name').textContent === 'Push-up');
+  const target = pushup.querySelector('.exercise__target');
+  assert.ok(target.textContent.includes('3 sets'));
+  assert.ok(target.textContent.includes('15 reps'));
 });
 
-test('resistance exercise with duration_s shows hold time', () => {
+test('resistance with duration_s shows hold time, no reps', async () => {
+  freshDb();
   const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
   const items = [...root.querySelectorAll('.exercise--resistance')];
-  const plank = items.find(n => n.querySelector('.exercise__name').textContent === 'Plank');
-  assert.ok(plank, 'Plank exercise should be in DOM');
-  const detail = plank.querySelector('.exercise__detail');
-  assert.ok(detail.textContent.includes('60s hold'));
-  assert.not.ok(detail.textContent.includes('reps'), 'reps should not appear on timed hold');
+  const plank = items.find((n) =>
+    n.querySelector('.exercise__name').textContent === 'Plank');
+  const target = plank.querySelector('.exercise__target');
+  assert.ok(target.textContent.includes('60s hold'));
+  assert.not.ok(target.textContent.includes('reps'));
 });
 
-test('exercise name is rendered in .exercise__name', () => {
+// --- Phase 5b regression: image affordance must not throw ---
+
+test('resistance exercise renders the paste-image affordance', async () => {
+  freshDb();
   const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
-  const names = [...root.querySelectorAll('.exercise__name')].map(n => n.textContent);
-  assert.ok(names.includes('5k Run'));
-  assert.ok(names.includes('Push-up'));
-  assert.ok(names.includes('Plank'));
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
+  const aff = root.querySelectorAll('.exercise--resistance .image-aff');
+  assert.is(aff.length, 2, 'one image affordance per resistance exercise');
+  // Each affordance should have a button child plus the status span.
+  for (const a of aff) {
+    assert.ok(a.querySelector('.image-aff__btn'));
+    assert.ok(a.querySelector('.image-aff__status'));
+  }
 });
 
-test('exercise type badge is rendered in .exercise__type', () => {
+test('running exercise does NOT render the image affordance (US19)', async () => {
+  freshDb();
   const root = freshRoot();
-  renderToday(root, MONDAY_REGIME, MONDAY);
-  const types = [...root.querySelectorAll('.exercise__type')].map(n => n.textContent);
-  assert.ok(types.includes('running'));
-  assert.ok(types.includes('resistance'));
-});
-
-// --- renderToday: session with no exercises ---
-
-test('session with no exercises renders empty state', () => {
-  const root = freshRoot();
-  const regime = {
-    days: {
-      monday: {
-        morning: null,
-        afternoon: [{ name: 'Push-up', type: 'resistance', sets: 3, reps: 15 }]
-      }
-    }
-  };
-  renderToday(root, regime, MONDAY);
-  const empty = root.querySelector('.session--empty');
-  assert.ok(empty, 'empty session section should exist when morning is null');
-  assert.ok(empty.querySelector('.session__empty'), '.session__empty message should exist');
-});
-
-// --- formatWeekday ---
-
-test('formatWeekday capitalises first letter', () => {
-  assert.is(formatWeekday('monday'), 'Monday');
-  assert.is(formatWeekday('friday'), 'Friday');
+  await renderForDate(root, MONDAY_REGIME, MONDAY, () => {});
+  const runRow = root.querySelector('.exercise--running');
+  assert.not.ok(runRow.querySelector('.image-aff'),
+    'running exercises should not get an image affordance');
 });
 
 test.run();
