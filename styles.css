@@ -215,6 +215,68 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
   border-radius: 12px;
 }
 
+.export-view {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0 0;
+  display: block;
+}
+.export__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.export__range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 0.75rem;
+}
+.export__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.export__field input[disabled] { opacity: 0.5; }
+.export__all {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.export__all input[type="checkbox"] {
+  width: 1.05rem; height: 1.05rem; accent-color: var(--accent);
+}
+.export__actions { margin-top: 0.9rem; }
+.export__copy-btn {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.export__copy-btn[disabled] { opacity: 0.5; cursor: progress; }
+.export__status {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-height: 1.2em;
+}
+.export__status[data-kind="success"] { color: var(--success); }
+.export__status[data-kind="error"]   { color: #b91c1c; }
+
+@media (max-width: 420px) {
+  .export__range { grid-template-columns: 1fr; }
+}
+
 .install-hint {
   margin-top: 2rem;
   padding: 0.75rem 1rem;

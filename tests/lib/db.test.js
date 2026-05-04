@@ -9,6 +9,8 @@ import {
   loadSession,
   saveExerciseValues,
   setSessionComplete,
+  getSessionsInRange,
+  getAllSessions,
   _setDbForTest,
   _internals
 } from '../../src/db.js';
@@ -157,6 +159,45 @@ test('historic dates and today are stored independently', async () => {
   const today = await loadSession('2026-05-04', 'morning', [RUN_DEF]);
   assert.equal(past.entries[0].values, { distance_km: 4.5 });
   assert.equal(today.entries[0].values, { distance_km: 5.2 });
+});
+
+test('getSessionsInRange returns rows within [from, to] inclusive, sorted', async () => {
+  freshDb();
+  await saveExerciseValues('2026-04-25', 'morning', 0, [RUN_DEF], { distance_km: 4 });
+  await saveExerciseValues('2026-05-04', 'morning', 0, [RUN_DEF], { distance_km: 5 });
+  await saveExerciseValues('2026-05-04', 'afternoon', 0, [PLANK_DEF], { sets: 3, duration_s: 60 });
+  await saveExerciseValues('2026-05-10', 'morning', 0, [RUN_DEF], { distance_km: 6 });
+
+  const rows = await getSessionsInRange('2026-05-01', '2026-05-09');
+  assert.is(rows.length, 2);
+  assert.is(rows[0].date, '2026-05-04');
+  assert.is(rows[0].session, 'morning');
+  assert.is(rows[1].date, '2026-05-04');
+  assert.is(rows[1].session, 'afternoon');
+});
+
+test('getSessionsInRange single-day (from = to) returns just that day (US16)', async () => {
+  freshDb();
+  await saveExerciseValues('2026-05-03', 'morning', 0, [RUN_DEF], { distance_km: 4 });
+  await saveExerciseValues('2026-05-04', 'morning', 0, [RUN_DEF], { distance_km: 5 });
+  await saveExerciseValues('2026-05-05', 'morning', 0, [RUN_DEF], { distance_km: 6 });
+
+  const rows = await getSessionsInRange('2026-05-04', '2026-05-04');
+  assert.is(rows.length, 1);
+  assert.is(rows[0].date, '2026-05-04');
+});
+
+test('getAllSessions returns every row sorted asc (US16.5)', async () => {
+  freshDb();
+  await saveExerciseValues('2026-05-10', 'morning', 0, [RUN_DEF], { distance_km: 6 });
+  await saveExerciseValues('2026-04-25', 'morning', 0, [RUN_DEF], { distance_km: 4 });
+  await saveExerciseValues('2026-05-04', 'afternoon', 0, [PLANK_DEF], { sets: 3, duration_s: 60 });
+
+  const rows = await getAllSessions();
+  assert.is(rows.length, 3);
+  assert.is(rows[0].date, '2026-04-25');
+  assert.is(rows[1].date, '2026-05-04');
+  assert.is(rows[2].date, '2026-05-10');
 });
 
 test.run();

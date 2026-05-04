@@ -142,6 +142,33 @@ export function _setDbForTest(db) {
   _db = db;
 }
 
+/**
+ * Fetch all stored sessions whose date falls within [from, to] inclusive.
+ * Sorted by date ascending, then morning before afternoon.
+ */
+export async function getSessionsInRange(from, to) {
+  const db = openDb();
+  const rows = await db.table(SESSION_TABLE)
+    .where('date').between(from, to, true, true)
+    .toArray();
+  return sortRows(rows);
+}
+
+/** Fetch every stored session row. Sorted as above. */
+export async function getAllSessions() {
+  const db = openDb();
+  const rows = await db.table(SESSION_TABLE).toArray();
+  return sortRows(rows);
+}
+
+function sortRows(rows) {
+  return rows.slice().sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.session === b.session) return 0;
+    return a.session === 'morning' ? -1 : 1;
+  });
+}
+
 export const _internals = {
   DB_NAME,
   SESSION_TABLE

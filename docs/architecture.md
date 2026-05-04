@@ -17,8 +17,9 @@ A single-user offline PWA. No backend, no auth, no network calls after install.
 │              │      └── sessionsForDate()           │
 │              │                                      │
 │              ├── src/defaultRegime.js  (embedded)   │
-│              ├── src/session.js  (today renderer)   │
+│              ├── src/session.js  (date renderer)    │
 │              ├── src/log.js      (form fields)      │
+│              ├── src/export.js   (TSV + clipboard)  │
 │              ├── src/db.js       (Dexie I/O)        │
 │              ├── src/ui.js       (DOM helpers)      │
 │              └── src/types.js    (JSDoc typedefs)   │

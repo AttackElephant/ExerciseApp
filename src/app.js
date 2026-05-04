@@ -2,6 +2,7 @@
 
 import { getActiveRegime, validateRegime } from './regime.js';
 import { renderForDate } from './session.js';
+import { renderExportPanel } from './export.js';
 import { el, mount } from './ui.js';
 
 function renderError(root, message) {
@@ -32,15 +33,22 @@ async function boot() {
     return;
   }
 
+  // The day view re-renders on date change; the export panel is mounted
+  // once so its from/to state survives navigation.
+  const dayContainer = el('div', { class: 'day-view' });
+  const exportContainer = el('section', { class: 'export-view' });
+  const hintContainer = el('div', { class: 'hint-view' });
+  mount(root, dayContainer, exportContainer, hintContainer);
+
   let currentDate = new Date();
   const onDateChange = async (next) => {
     currentDate = next;
-    await renderForDate(root, regime, currentDate, onDateChange);
-    renderInstallHint(root);
+    await renderForDate(dayContainer, regime, currentDate, onDateChange);
   };
 
-  await renderForDate(root, regime, currentDate, onDateChange);
-  renderInstallHint(root);
+  await renderForDate(dayContainer, regime, currentDate, onDateChange);
+  renderExportPanel(exportContainer);
+  renderInstallHint(hintContainer);
 }
 
 

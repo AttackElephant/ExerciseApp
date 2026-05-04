@@ -132,11 +132,59 @@ progression suggestions.
 No future-date logging (picker capped at today, next-day disabled). No
 clipboard export. No regime updates. No images. No aggregation views.
 
-## Next: Phase 4 — Clipboard Export
-- Date-range picker (from / to / "all").
-- TSV header + one row per exercise per session per date.
-- Self-describing rows so that pre- and post-regime-change data
-  concatenates cleanly in a spreadsheet (US15).
+## Phase 4 — Clipboard Export
+
+**Status:** complete (pending iPhone verification).
+
+### Done
+- `src/export.js` —
+  - `sessionsToTSV(rows)` builds the TSV string with the header row
+    `date \t session \t exercise_name \t type \t sets \t reps \t
+    duration_s \t distance_km \t duration_min \t surface` and one data
+    row per stored exercise. Cells not applicable to the row's type are
+    empty. `exercise_name` and `type` are always populated, so concat'd
+    rows from different regime versions remain self-describing (US15).
+  - `renderExportPanel(root)` mounts the export UI: from/to pickers,
+    "All dates" toggle, copy button, status message. Uses
+    `navigator.clipboard.writeText` with a hidden-textarea fallback.
+- `src/db.js` — `getSessionsInRange(from, to)` (uses the existing `date`
+  index, inclusive bounds), `getAllSessions()`. Both sort by date asc
+  then morning-before-afternoon.
+- `src/app.js` — splits `#app` into a re-rendering `day-view`, a
+  mount-once `export-view`, and a `hint-view`. The export panel's
+  from/to state survives date navigation.
+- `styles.css` — export panel matches the session card styling; range
+  collapses to a single column under 420 px.
+- `sw.js` — precache list extended with `src/export.js`; `CACHE_VERSION`
+  bumped to v5.
+- Tests: `tests/lib/export.test.js` (8 cases for header order, empty
+  cells, single-day, multi-day, escaping) and three new cases in
+  `tests/lib/db.test.js` (range, single-day, all). Suite is now 38
+  passing.
+
+### Acceptance check
+- US13: from/to picker + copy button writes TSV to clipboard;
+  status message shows row count and scope.
+- US14: header row always emitted (even with zero data rows); column
+  order matches the PRD; type-irrelevant cells are empty.
+- US15: `exercise_name` and `type` are written for every row, so a
+  pre-update row and a post-update row concatenate without ambiguity.
+- US16: from = to is handled by the same code path, no special case.
+- US16.5: "All dates" checkbox disables the range inputs and copies
+  every stored row.
+
+### Boundaries respected
+Clipboard only — no file download, no scheduled export. No filtering
+by exercise type or session. No summary, aggregation, or calculated
+fields. Header is the only metadata.
+
+## Next: Phase 5 — Regime Updates and Exercise Images
+- Paste-import a new regime JSON (validated, atomically replaces the
+  active regime; existing logs untouched per US18 — already enforced
+  by Phase 3's snapshot semantics).
+- Per-resistance-exercise image upload via clipboard paste; stored in
+  IndexedDB keyed by exercise name; persists across regime updates.
+- Info button + image modal viewer.
 
 ## Convention check
 None of the conventions in CLAUDE.md were invalidated. The "each log
