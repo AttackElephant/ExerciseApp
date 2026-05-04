@@ -420,66 +420,6 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 .regime__status[data-kind="success"] { color: var(--success); }
 .regime__status[data-kind="error"]   { color: #b91c1c; }
 
-/* TESTING PANEL — REMOVE BEFORE PUBLIC RELEASE.
-   Distinct dashed amber border so it never looks like production UI. */
-.testing-view { display: block; margin: 1rem 0 0; }
-.testing {
-  background: var(--surface);
-  border: 1.5px dashed #d97706;
-  border-radius: 12px;
-  padding: 0.75rem 1.25rem;
-}
-.testing[open] { padding-bottom: 1rem; }
-.testing__summary {
-  cursor: pointer;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #b45309;
-  padding: 0.25rem 0;
-  list-style: none;
-}
-.testing__summary::-webkit-details-marker { display: none; }
-.testing__summary::before {
-  content: '⚠';
-  display: inline-block;
-  width: 1.4em;
-  color: #d97706;
-}
-.testing__note {
-  margin: 0.6rem 0 0.75rem;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-.testing__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.testing__btn {
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 0.5rem 0.85rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 8px;
-  cursor: pointer;
-}
-.testing__btn--danger {
-  border-color: #dc2626;
-  color: #dc2626;
-}
-.testing__btn[disabled] { opacity: 0.5; cursor: progress; }
-.testing__status {
-  margin: 0.6rem 0 0;
-  font-size: 0.85rem;
-  color: var(--muted);
-  min-height: 1.2em;
-}
-.testing__status[data-kind="success"] { color: var(--success); }
-.testing__status[data-kind="error"]   { color: #b91c1c; }
-
 .install-hint {
   margin-top: 2rem;
   padding: 0.75rem 1rem;

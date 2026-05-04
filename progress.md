@@ -182,16 +182,6 @@ fields. Header is the only metadata.
 
 **Status:** complete (pending iPhone verification).
 
-> **TESTING PANEL — REMOVE BEFORE PUBLIC RELEASE.**
-> A `<details>` panel at the bottom of the app exposes "Reset today's
-> session" and "Wipe all data" buttons so the regime apply / logging
-> paths can be validated without devtools. To remove at go-live:
-> 1. Delete `src/testingPanel.js`.
-> 2. Remove the import + `renderTestingPanel(...)` call in `src/app.js`.
-> 3. Remove the `.testing*` CSS block in `styles.css`.
-> 4. Drop `./src/testingPanel.js` from `sw.js` precache.
-> 5. Bump `CACHE_VERSION`.
-
 Per the PRD's "flag before starting" note, Phase 5 was split into 5a
 (regime updates, US17/US18) and 5b (images, US19–US21). 5b will be a
 follow-up branch.
