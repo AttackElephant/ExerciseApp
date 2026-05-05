@@ -1,6 +1,8 @@
 :root {
   --bg: #f5f5f4;
   --surface: #ffffff;
+  --session-bg: #eff6ff;          /* very light blue for morning/afternoon cards */
+  --session-border: #c7dbf5;
   --text: #1c1917;
   --muted: #6b7280;
   --accent: #0b6e4f;
@@ -14,6 +16,8 @@
   :root {
     --bg: #0b0b0c;
     --surface: #18181b;
+    --session-bg: #15203a;        /* deep blue-tinted card background */
+    --session-border: #1f3056;
     --text: #f5f5f4;
     --muted: #a1a1aa;
     --accent: #34d399;
@@ -71,8 +75,8 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 }
 
 .session {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--session-bg);
+  border: 1px solid var(--session-border);
   border-radius: 12px;
   padding: 1rem 1.25rem;
   margin: 0 0 1rem;

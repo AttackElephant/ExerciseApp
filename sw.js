@@ -1,7 +1,7 @@
 // Cache-first service worker. Single user, small asset set.
 // Hand-rolled rather than Workbox: see docs/adr/002-service-worker.md.
 
-const CACHE_VERSION = 'exerciseapp-v13';
+const CACHE_VERSION = 'exerciseapp-v14';
 const PRECACHE = [
   './',
   './index.html',
