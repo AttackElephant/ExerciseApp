@@ -37,9 +37,14 @@ function renderExerciseRow(date, session, index, definition, values, regimeDefin
   const headChildren = [
     el('span', { class: 'exercise__name', text: definition.name })
   ];
-  // Image affordance is resistance-only per US19.
-  if (definition.type === 'resistance') {
-    headChildren.push(renderImageAffordance(definition.name, imageNames?.has(definition.name)));
+  // Image affordance:
+  //   - View (ℹ) is shown for any exercise that has a stored image (US20).
+  //   - Paste (📋) is offered only on resistance exercises per US19, so
+  //     running rows without a seeded image stay button-free.
+  const hasImage = !!imageNames?.has(definition.name);
+  const canPaste = definition.type === 'resistance';
+  if (hasImage || canPaste) {
+    headChildren.push(renderImageAffordance(definition.name, hasImage, canPaste));
   }
   headChildren.push(el('span', { class: 'exercise__type', text: definition.type }));
   const head = el('div', { class: 'exercise__head' }, headChildren);

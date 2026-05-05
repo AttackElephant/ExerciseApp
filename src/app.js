@@ -4,6 +4,7 @@ import { getActiveRegime, validateRegime } from './regime.js';
 import { renderForDate } from './session.js';
 import { renderExportPanel } from './export.js';
 import { renderRegimePanel } from './regimePanel.js';
+import { seedDefaultImagesIfNeeded } from './defaultImages.js';
 import { el, mount } from './ui.js';
 
 function renderError(root, message) {
@@ -32,6 +33,17 @@ async function boot() {
   if (!result.valid) {
     renderError(root, result.error);
     return;
+  }
+
+  // First-launch only: write the bundled demonstration PNGs into IndexedDB
+  // so each default exercise's ℹ button works on the very first render.
+  // Awaited so renderForDate's listImageNames() sees the seeded entries.
+  // Failures are logged and swallowed — the app still functions without
+  // seeded images.
+  try {
+    await seedDefaultImagesIfNeeded();
+  } catch (err) {
+    console.error('seedDefaultImagesIfNeeded failed', err);
   }
 
   // The day view re-renders on date change or regime change; the export

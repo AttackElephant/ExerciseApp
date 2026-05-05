@@ -1,50 +1,78 @@
 // Embedded default regime — ships with the app per US2.
-// Replaced at runtime once US17 (paste regime) is implemented.
+// Replaced at runtime once the user pastes one (US17). Exercise names are
+// kebab-case strings matching the filenames under assets/exercises/, so the
+// per-exercise demonstration images keyed by name (US19/US21) link
+// automatically.
 
 export const defaultRegime = {
-  name: 'Default',
+  name: 'Shane base — chin-up + cardio',
   days: {
     monday: {
       morning: [
-        { name: '5k Run', type: 'running', distance_km: 5, duration_min: 30, surface: 'outdoor' }
+        { name: 'easy-run', type: 'running',
+          distance_km: 3, duration_min: 20, surface: 'outdoor' }
       ],
       afternoon: [
-        { name: 'Push-up', type: 'resistance', sets: 3, reps: 15 },
-        { name: 'Plank', type: 'resistance', sets: 3, duration_s: 60 }
+        { name: 'dead-hang', type: 'resistance', sets: 2, duration_s: 25 }
       ]
     },
+
     tuesday: {
       morning: [
-        { name: 'Treadmill Intervals', type: 'running', distance_km: 3, duration_min: 20, surface: 'treadmill' }
-      ]
-    },
-    wednesday: {
+        { name: 'arm-circles', type: 'resistance', sets: 1, reps: 20 },
+        { name: 'band-external-rotations', type: 'resistance', sets: 2, reps: 15 },
+        { name: 'bodyweight-squats', type: 'resistance', sets: 1, reps: 15 },
+        { name: 'brisk-walk', type: 'running',
+          distance_km: 1.5, duration_min: 15, surface: 'outdoor' }
+      ],
       afternoon: [
-        { name: 'Squat', type: 'resistance', sets: 4, reps: 12 },
-        { name: 'Glute Bridge', type: 'resistance', sets: 3, duration_s: 45 }
+        { name: 'dead-hang', type: 'resistance', sets: 3, duration_s: 25 },
+        { name: 'scapular-pulls', type: 'resistance', sets: 3, reps: 8 },
+        { name: 'negative-chin-ups', type: 'resistance', sets: 3, reps: 4 },
+        { name: 'inverted-rows', type: 'resistance', sets: 3, reps: 9 },
+        { name: 'push-ups', type: 'resistance', sets: 3, reps: 9 }
       ]
     },
+
+    wednesday: {
+      morning: [
+        { name: 'run-with-pickups', type: 'running',
+          distance_km: 3, duration_min: 20, surface: 'outdoor' }
+      ],
+      afternoon: [
+        { name: 'dead-hang', type: 'resistance', sets: 2, duration_s: 25 },
+        { name: 'walking-lunges', type: 'resistance', sets: 2, reps: 12 }
+      ]
+    },
+
     thursday: {
       morning: [
-        { name: '5k Run', type: 'running', distance_km: 5, duration_min: 30, surface: 'outdoor' }
+        { name: 'arm-circles', type: 'resistance', sets: 1, reps: 20 },
+        { name: 'band-external-rotations', type: 'resistance', sets: 2, reps: 15 },
+        { name: 'bodyweight-squats', type: 'resistance', sets: 1, reps: 15 },
+        { name: 'brisk-walk', type: 'running',
+          distance_km: 1.5, duration_min: 15, surface: 'outdoor' }
       ],
       afternoon: [
-        { name: 'Push-up', type: 'resistance', sets: 3, reps: 15 }
+        { name: 'dead-hang', type: 'resistance', sets: 3, duration_s: 25 },
+        { name: 'scapular-pulls', type: 'resistance', sets: 3, reps: 8 },
+        { name: 'negative-chin-ups', type: 'resistance', sets: 3, reps: 4 },
+        { name: 'inverted-rows', type: 'resistance', sets: 3, reps: 9 },
+        { name: 'push-ups', type: 'resistance', sets: 3, reps: 9 }
       ]
     },
+
     friday: {
       morning: [
-        { name: 'Treadmill Easy', type: 'running', distance_km: 4, duration_min: 28, surface: 'treadmill' }
-      ]
-    },
-    saturday: {
-      morning: [
-        { name: 'Long Run', type: 'running', distance_km: 10, duration_min: 60, surface: 'outdoor' }
+        { name: 'easy-run', type: 'running',
+          distance_km: 3, duration_min: 20, surface: 'outdoor' }
       ],
       afternoon: [
-        { name: 'Plank', type: 'resistance', sets: 3, duration_s: 60 }
+        { name: 'dead-hang', type: 'resistance', sets: 2, duration_s: 25 },
+        { name: 'band-external-rotations', type: 'resistance', sets: 2, reps: 15 },
+        { name: 'bear-crawl', type: 'resistance', sets: 2, duration_s: 30 }
       ]
     }
-    // sunday omitted = rest day
+    // saturday + sunday omitted = rest days
   }
 };

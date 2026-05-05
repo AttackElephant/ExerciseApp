@@ -1,71 +1,57 @@
-export const regime = {
-  name: "Shane base — chin-up + cardio",
-  days: {
-    monday: {
-      morning: [
-        { name: "easy-run", type: "running",
-          distance_km: 3, duration_min: 20, surface: "outdoor" }
-      ],
-      afternoon: [
-        { name: "dead-hang", type: "resistance", sets: 2, duration_s: 25 }
-      ]
-    },
+// Regime helpers: active-regime read/write and weekday lookup. The shape
+// of a Regime — and the rules a pasted JSON must satisfy — live in
+// src/schema.js (see ADR-003). validateRegime is re-exported here for
+// callers that already have `regime.js` imported.
 
-    tuesday: {
-      morning: [
-        { name: "arm-circles", type: "resistance", sets: 1, reps: 20 },
-        { name: "band-external-rotations", type: "resistance", sets: 2, reps: 15 },
-        { name: "bodyweight-squats", type: "resistance", sets: 1, reps: 15 },
-        { name: "brisk-walk", type: "running",
-          distance_km: 1.5, duration_min: 15, surface: "outdoor" }
-      ],
-      afternoon: [
-        { name: "dead-hang", type: "resistance", sets: 3, duration_s: 25 },
-        { name: "scapular-pulls", type: "resistance", sets: 3, reps: 8 },
-        { name: "negative-chin-ups", type: "resistance", sets: 3, reps: 4 },
-        { name: "inverted-rows", type: "resistance", sets: 3, reps: 9 },
-        { name: "push-ups", type: "resistance", sets: 3, reps: 9 }
-      ]
-    },
+import { defaultRegime } from './defaultRegime.js';
+import { getStoredRegime, setStoredRegime } from './db.js';
+import { validateRegime } from './schema.js';
 
-    wednesday: {
-      morning: [
-        { name: "run-with-pickups", type: "running",
-          distance_km: 3, duration_min: 20, surface: "outdoor" }
-      ],
-      afternoon: [
-        { name: "dead-hang", type: "resistance", sets: 2, duration_s: 25 },
-        { name: "walking-lunges", type: "resistance", sets: 2, reps: 12 }
-      ]
-    },
+export { validateRegime } from './schema.js';
 
-    thursday: {
-      morning: [
-        { name: "arm-circles", type: "resistance", sets: 1, reps: 20 },
-        { name: "band-external-rotations", type: "resistance", sets: 2, reps: 15 },
-        { name: "bodyweight-squats", type: "resistance", sets: 1, reps: 15 },
-        { name: "brisk-walk", type: "running",
-          distance_km: 1.5, duration_min: 15, surface: "outdoor" }
-      ],
-      afternoon: [
-        { name: "dead-hang", type: "resistance", sets: 3, duration_s: 25 },
-        { name: "scapular-pulls", type: "resistance", sets: 3, reps: 8 },
-        { name: "negative-chin-ups", type: "resistance", sets: 3, reps: 4 },
-        { name: "inverted-rows", type: "resistance", sets: 3, reps: 9 },
-        { name: "push-ups", type: "resistance", sets: 3, reps: 9 }
-      ]
-    },
-
-    friday: {
-      morning: [
-        { name: "easy-run", type: "running",
-          distance_km: 3, duration_min: 20, surface: "outdoor" }
-      ],
-      afternoon: [
-        { name: "dead-hang", type: "resistance", sets: 2, duration_s: 25 },
-        { name: "band-external-rotations", type: "resistance", sets: 2, reps: 15 },
-        { name: "bear-crawl", type: "resistance", sets: 2, duration_s: 30 }
-      ]
-    }
+/**
+ * Returns the active regime: the user-pasted regime from IndexedDB if one
+ * exists and is still valid, otherwise the embedded default. A stored
+ * regime that fails validation (e.g. corruption) falls back silently to
+ * the default — the user is never left with a broken view.
+ */
+export async function getActiveRegime() {
+  const stored = await getStoredRegime();
+  if (stored) {
+    const v = validateRegime(stored);
+    if (v.valid) return stored;
+    console.error('Stored regime failed validation; using default.', v.error);
   }
-};
+  return defaultRegime;
+}
+
+/**
+ * Validate and persist a new regime. Throws with a plain-text message if
+ * the regime is invalid; callers display the message to the user (US17).
+ * On success the regime becomes active immediately for any subsequent
+ * `getActiveRegime` call.
+ */
+export async function setActiveRegime(regime) {
+  const v = validateRegime(regime);
+  if (!v.valid) throw new Error(v.error);
+  await setStoredRegime(regime);
+}
+
+const WEEKDAY_NAMES = [
+  'sunday', 'monday', 'tuesday', 'wednesday',
+  'thursday', 'friday', 'saturday'
+];
+
+export function weekdayFor(date) {
+  return WEEKDAY_NAMES[date.getDay()];
+}
+
+export function sessionsForDate(regime, date) {
+  const day = weekdayFor(date);
+  const entry = regime.days[day];
+  return {
+    weekday: day,
+    morning: entry?.morning ?? null,
+    afternoon: entry?.afternoon ?? null
+  };
+}

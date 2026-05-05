@@ -189,23 +189,39 @@ function sortRows(rows) {
 
 const REGIME_KEY = 'regime';
 
+/**
+ * Generic meta key/value access. Keep helpers like `getStoredRegime`
+ * (below) for known keys, but new flags can use these directly.
+ */
+export async function getMeta(key) {
+  const db = openDb();
+  const row = await db.table(META_TABLE).get(key);
+  return row ? row.value : null;
+}
+
+export async function setMeta(key, value) {
+  const db = openDb();
+  await db.table(META_TABLE).put({ key, value });
+}
+
+export async function deleteMeta(key) {
+  const db = openDb();
+  await db.table(META_TABLE).delete(key);
+}
+
 /** Returns the user-pasted regime if one has been stored, else null. */
 export async function getStoredRegime() {
-  const db = openDb();
-  const row = await db.table(META_TABLE).get(REGIME_KEY);
-  return row ? row.value : null;
+  return getMeta(REGIME_KEY);
 }
 
 /** Persist a regime as the active regime. Caller is responsible for validating. */
 export async function setStoredRegime(regime) {
-  const db = openDb();
-  await db.table(META_TABLE).put({ key: REGIME_KEY, value: regime });
+  return setMeta(REGIME_KEY, regime);
 }
 
 /** Remove any user-pasted regime, reverting to the embedded default. */
 export async function clearStoredRegime() {
-  const db = openDb();
-  await db.table(META_TABLE).delete(REGIME_KEY);
+  return deleteMeta(REGIME_KEY);
 }
 
 /** Delete every session row for a given date (both morning and afternoon). */

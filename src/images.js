@@ -95,8 +95,12 @@ export async function showImageModal(name, onDelete) {
  *
  * @param {string} name
  * @param {boolean} initiallyHasImage
+ * @param {boolean} [canPaste=true] when false, no paste affordance is
+ *        offered — the wrapper renders nothing if the image is also
+ *        absent. Used to keep US19 paste-resistance-only while still
+ *        letting non-resistance exercises with seeded images expose ℹ.
  */
-export function renderImageAffordance(name, initiallyHasImage) {
+export function renderImageAffordance(name, initiallyHasImage, canPaste = true) {
   const wrapper = el('span', { class: 'image-aff' });
   const status = el('span', {
     class: 'image-aff__status', role: 'status', 'aria-live': 'polite'
@@ -123,7 +127,7 @@ export function renderImageAffordance(name, initiallyHasImage) {
   const onAfterDelete = () => {
     hasImage = false;
     render();
-    setStatus('Image deleted.', 'success');
+    if (canPaste) setStatus('Image deleted.', 'success');
   };
 
   const renderViewBtn = () => {
@@ -177,8 +181,12 @@ export function renderImageAffordance(name, initiallyHasImage) {
     while (wrapper.firstChild && wrapper.firstChild !== status) {
       wrapper.removeChild(wrapper.firstChild);
     }
-    const btn = hasImage ? renderViewBtn() : renderPasteBtn();
-    wrapper.insertBefore(btn, status);
+    if (hasImage) {
+      wrapper.insertBefore(renderViewBtn(), status);
+    } else if (canPaste) {
+      wrapper.insertBefore(renderPasteBtn(), status);
+    }
+    // else: no image, no paste — the wrapper renders only the (empty) status.
   };
 
   // Status must be a child of wrapper before render() runs, otherwise

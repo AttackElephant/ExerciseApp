@@ -1,7 +1,7 @@
 // Cache-first service worker. Single user, small asset set.
 // Hand-rolled rather than Workbox: see docs/adr/002-service-worker.md.
 
-const CACHE_VERSION = 'exerciseapp-v12';
+const CACHE_VERSION = 'exerciseapp-v13';
 const PRECACHE = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const PRECACHE = [
   './src/app.js',
   './src/regime.js',
   './src/defaultRegime.js',
+  './src/defaultImages.js',
   './src/schema.js',
   './src/session.js',
   './src/ui.js',
@@ -20,7 +21,20 @@ const PRECACHE = [
   './src/images.js',
   './vendor/dexie.mjs',
   './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png'
+  './assets/icons/icon-512.png',
+  './assets/exercises/arm-circles.png',
+  './assets/exercises/band-external-rotations.png',
+  './assets/exercises/bear-crawl.png',
+  './assets/exercises/bodyweight-squats.png',
+  './assets/exercises/brisk-walk.png',
+  './assets/exercises/dead-hang.png',
+  './assets/exercises/easy-run.png',
+  './assets/exercises/inverted-rows.png',
+  './assets/exercises/negative-chin-ups.png',
+  './assets/exercises/push-ups.png',
+  './assets/exercises/run-with-pickups.png',
+  './assets/exercises/scapular-pulls.png',
+  './assets/exercises/walking-lunges.png'
 ];
 
 self.addEventListener('install', (event) => {
