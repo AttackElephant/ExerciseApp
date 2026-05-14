@@ -72,15 +72,21 @@ export const SURFACES = Object.freeze(['treadmill', 'outdoor']);
  * never overwritten by later edits. `values` are whatever the user
  * entered, and may be partial.
  *
+ * Resistance reps and hold-time are stored as arrays — one slot per set —
+ * so a 3-set push-up exercise records {14, 12, 10} individually. Slots
+ * may be undefined for sets the user hasn't filled in. Legacy entries
+ * (pre per-set support) keep their scalar shape and are read/displayed
+ * as a single value; no in-place migration.
+ *
  * @typedef {Object} LoggedEntry
  * @property {Exercise} definition
  * @property {{
  *   distance_km?: number,
  *   duration_min?: number,
  *   surface?: Surface,
- *   sets?: number,
- *   reps?: number,
- *   duration_s?: number
+ *   sets?: number,                    // legacy only
+ *   reps?: number | number[],         // array = per-set; number = legacy
+ *   duration_s?: number | number[]    // array = per-set; number = legacy
  * }} values
  */
 

@@ -6,7 +6,7 @@ import { dateKey, getAllSessions, getSessionsInRange } from './db.js';
 
 export const HEADERS = [
   'date', 'session', 'exercise_name', 'type',
-  'sets', 'reps', 'duration_s',
+  'set', 'sets', 'reps', 'duration_s',
   'distance_km', 'duration_min', 'surface'
 ];
 
@@ -17,22 +17,63 @@ function escapeCell(v) {
   return String(v).replace(/[\t\r\n]/g, ' ');
 }
 
-function rowFor(date, session, definition, values) {
-  const v = values ?? {};
-  const isResistance = definition.type === 'resistance';
-  const isRunning = definition.type === 'running';
+function isPerSetShape(values) {
+  if (!values) return false;
+  return Array.isArray(values.reps) || Array.isArray(values.duration_s);
+}
+
+function buildRow({ date, session, definition, set, sets, reps, duration_s,
+                    distance_km, duration_min, surface }) {
   return [
-    date,
-    session,
-    definition.name,
-    definition.type,
-    isResistance ? v.sets : '',
-    isResistance ? v.reps : '',
-    isResistance ? v.duration_s : '',
-    isRunning ? v.distance_km : '',
-    isRunning ? v.duration_min : '',
-    isRunning ? v.surface : ''
+    date, session, definition.name, definition.type,
+    set, sets, reps, duration_s,
+    distance_km, duration_min, surface
   ].map(escapeCell).join('\t');
+}
+
+function rowsFor(date, session, definition, values) {
+  const v = values ?? {};
+  const out = [];
+
+  if (definition.type === 'running') {
+    out.push(buildRow({
+      date, session, definition,
+      set: '', sets: '',
+      reps: '', duration_s: '',
+      distance_km: v.distance_km,
+      duration_min: v.duration_min,
+      surface: v.surface
+    }));
+    return out;
+  }
+
+  // Resistance.
+  if (isPerSetShape(v)) {
+    const N = definition.sets;
+    const reps = Array.isArray(v.reps) ? v.reps : [];
+    const dur  = Array.isArray(v.duration_s) ? v.duration_s : [];
+    const count = Math.max(N, reps.length, dur.length);
+    for (let i = 0; i < count; i++) {
+      out.push(buildRow({
+        date, session, definition,
+        set: i + 1, sets: N,
+        reps: reps[i],
+        duration_s: dur[i],
+        distance_km: '', duration_min: '', surface: ''
+      }));
+    }
+    return out;
+  }
+
+  // Legacy single-number resistance — one row, `set` left blank to
+  // distinguish from per-set data in downstream analysis.
+  out.push(buildRow({
+    date, session, definition,
+    set: '', sets: v.sets,
+    reps: v.reps, duration_s: v.duration_s,
+    distance_km: '', duration_min: '', surface: ''
+  }));
+  return out;
 }
 
 /**
@@ -45,8 +86,10 @@ export function sessionsToTSV(sessionRows) {
   for (const s of sessionRows) {
     for (const e of s.entries ?? []) {
       if (!e?.definition) continue;
-      lines.push(rowFor(s.date, s.session, e.definition, e.values));
-      dataRows += 1;
+      for (const row of rowsFor(s.date, s.session, e.definition, e.values)) {
+        lines.push(row);
+        dataRows += 1;
+      }
     }
   }
   return { tsv: lines.join('\n'), dataRows };

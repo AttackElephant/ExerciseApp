@@ -43,4 +43,40 @@ test('zero or non-finite values are not complete', () => {
   assert.is(isEntryComplete(PUSHUP_DEF, { sets: 3, reps: NaN }), false);
 });
 
+// --- per-set shape ---
+
+test('per-set reps: complete when all N slots filled', () => {
+  assert.is(isEntryComplete(PUSHUP_DEF, { reps: [14, 12, 10] }), true);
+});
+
+test('per-set reps: incomplete when fewer than N slots', () => {
+  assert.is(isEntryComplete(PUSHUP_DEF, { reps: [14, 12] }), false);
+  assert.is(isEntryComplete(PUSHUP_DEF, { reps: [] }), false);
+});
+
+test('per-set reps: incomplete when any slot is undefined', () => {
+  assert.is(isEntryComplete(PUSHUP_DEF, { reps: [14, undefined, 10] }), false);
+});
+
+test('per-set hold: complete when all N hold-times filled', () => {
+  assert.is(isEntryComplete(PLANK_DEF, { duration_s: [60, 55, 50] }), true);
+});
+
+test('per-set hold: incomplete with one missing slot', () => {
+  assert.is(isEntryComplete(PLANK_DEF, { duration_s: [60, 55] }), false);
+});
+
+test('per-set: 1-set exercise complete with a one-element array', () => {
+  const SINGLE = { name: 'arm-circles', type: 'resistance', sets: 1, reps: 20 };
+  assert.is(isEntryComplete(SINGLE, { reps: [20] }), true);
+  assert.is(isEntryComplete(SINGLE, { reps: [] }), false);
+});
+
+test('mixed legacy/new shape: presence of numeric `sets` keeps legacy semantics', () => {
+  // Legacy entries kept their `sets` scalar; we shouldn't treat them as
+  // per-set just because the reps field is missing.
+  assert.is(isEntryComplete(PUSHUP_DEF, { sets: 3, reps: 14 }), true);
+  assert.is(isEntryComplete(PUSHUP_DEF, { sets: 3 }), false);
+});
+
 test.run();

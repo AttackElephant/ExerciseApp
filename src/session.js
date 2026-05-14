@@ -58,7 +58,7 @@ function renderExerciseRow(date, session, index, definition, values, regimeDefin
 
   const fields = renderExerciseFields(
     definition,
-    currentValues,
+    () => currentValues,
     (patch) => {
       currentValues = { ...currentValues, ...patch };
       applyCompletionClass();

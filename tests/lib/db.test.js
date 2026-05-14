@@ -304,4 +304,35 @@ test('session writes do not touch image storage', async () => {
   assert.ok(await getImage('Plank'));
 });
 
+// --- Per-set values ---
+
+test('per-set reps array round-trips through Dexie', async () => {
+  freshDb();
+  await saveExerciseValues('2026-05-04', 'afternoon', 0, [PUSHUP_DEF],
+    { reps: [14, 12, 10] });
+  const s = await loadSession('2026-05-04', 'afternoon', [PUSHUP_DEF]);
+  assert.equal(s.entries[0].values.reps, [14, 12, 10]);
+});
+
+test('successive per-set patches replace the array verbatim', async () => {
+  // The UI sends the WHOLE new array on every change, so a second write
+  // should overwrite — not deep-merge — the previous array.
+  freshDb();
+  await saveExerciseValues('2026-05-04', 'afternoon', 0, [PUSHUP_DEF],
+    { reps: [14, 12, 10] });
+  await saveExerciseValues('2026-05-04', 'afternoon', 0, [PUSHUP_DEF],
+    { reps: [14, 13, 12] });
+  const s = await loadSession('2026-05-04', 'afternoon', [PUSHUP_DEF]);
+  assert.equal(s.entries[0].values.reps, [14, 13, 12]);
+});
+
+test('per-set duration_s array round-trips and coexists with reps absent', async () => {
+  freshDb();
+  await saveExerciseValues('2026-05-04', 'afternoon', 0, [PLANK_DEF],
+    { duration_s: [60, 55, 50] });
+  const s = await loadSession('2026-05-04', 'afternoon', [PLANK_DEF]);
+  assert.equal(s.entries[0].values.duration_s, [60, 55, 50]);
+  assert.is(s.entries[0].values.reps, undefined);
+});
+
 test.run();
