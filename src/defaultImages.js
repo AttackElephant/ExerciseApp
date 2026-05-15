@@ -18,14 +18,11 @@ const SEED_FLAG = 'imagesSeeded';
  */
 export const DEFAULT_IMAGE_NAMES = Object.freeze([
   'arm-circles',
-  'band-external-rotations',
   'bear-crawl',
   'bodyweight-squats',
-  'brisk-walk',
   'dead-hang',
   'easy-run',
   'inverted-rows',
-  'negative-chin-ups',
   'push-ups',
   'run-with-pickups',
   'scapular-pulls',
